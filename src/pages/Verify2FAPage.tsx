@@ -39,12 +39,12 @@ export default function Verify2FAPage() {
       return;
     }
     try {
-      await verify2FA(fullCode);
+      const verifiedUser = await verify2FA(fullCode);
       toast({ title: 'Verified!', description: 'Welcome to MediConnect.' });
       // Route based on role
-      if (pendingUser?.role === 'doctor') navigate('/doctor/dashboard');
-      else if (pendingUser?.role === 'admin') navigate('/admin/dashboard');
-      else if (pendingUser?.onboardingComplete === false) navigate('/onboarding');
+      if (verifiedUser?.role === 'doctor') navigate('/doctor/dashboard');
+      else if (verifiedUser?.role === 'admin') navigate('/admin/dashboard');
+      else if (verifiedUser?.onboardingComplete === false) navigate('/onboarding');
       else navigate('/patient/dashboard');
     } catch {
       toast({ title: 'Verification failed', variant: 'destructive' });
