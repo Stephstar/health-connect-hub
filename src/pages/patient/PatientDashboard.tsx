@@ -75,7 +75,7 @@ export default function PatientDashboard() {
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={logout}>
+          <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={() => { logout(); navigate('/'); }}>
             <LogOut className="h-4 w-4 mr-2" /> Sign Out
           </Button>
         </div>
