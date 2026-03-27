@@ -18,7 +18,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ requires2FA: boolean }>;
   signup: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
-  verify2FA: (code: string) => Promise<void>;
+  verify2FA: (code: string) => Promise<User>;
   logout: () => void;
   resetPassword: (email: string) => Promise<void>;
   updateUser: (data: Partial<User>) => void;
