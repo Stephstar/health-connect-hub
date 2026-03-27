@@ -42,9 +42,8 @@ export default function LoginPage() {
 
   const handleSocialLogin = (provider: string) => {
     toast({ title: `${provider} Login`, description: `Redirecting to ${provider}...` });
-    // Mock: just go to 2FA
     setTimeout(() => {
-      login(email || 'patient@demo.com', 'password').then(() => navigate('/verify-2fa'));
+      login('patient@demo.com', 'password').then(() => navigate('/verify-2fa'));
     }, 500);
   };
 
