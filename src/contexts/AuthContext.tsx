@@ -58,15 +58,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { requires2FA: true };
   }, []);
 
-  const verify2FA = useCallback(async (_code: string) => {
+  const verify2FA = useCallback(async (_code: string): Promise<User> => {
     setIsLoading(true);
     await new Promise(r => setTimeout(r, 600));
+    const verifiedUser = pendingUser!;
     if (pendingUser) {
       setUser(pendingUser);
       localStorage.setItem('telemed_user', JSON.stringify(pendingUser));
       setPendingUser(null);
     }
     setIsLoading(false);
+    return verifiedUser;
   }, [pendingUser]);
 
   const signup = useCallback(async (email: string, _password: string, name: string, role: UserRole) => {

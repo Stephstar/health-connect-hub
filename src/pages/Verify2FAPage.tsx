@@ -91,7 +91,7 @@ export default function Verify2FAPage() {
               </Button>
             </form>
             <p className="text-center text-sm text-muted-foreground mt-4">
-              Didn't receive a code? <button className="text-primary hover:underline font-medium">Resend</button>
+              Didn't receive a code? <button className="text-primary hover:underline font-medium" onClick={() => toast({ title: 'Code resent', description: 'A new verification code has been sent to your device.' })}>Resend</button>
             </p>
           </CardContent>
         </Card>
