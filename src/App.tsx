@@ -12,7 +12,6 @@ import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import Verify2FAPage from "./pages/Verify2FAPage";
 import NotFound from "./pages/NotFound";
-import PlaceholderPage from "./pages/PlaceholderPage";
 
 import PatientDashboard from "./pages/patient/PatientDashboard";
 import AppointmentBooking from "./pages/patient/AppointmentBooking";
@@ -22,9 +21,24 @@ import AIAssistant from "./pages/patient/AIAssistant";
 import BillingDashboard from "./pages/patient/BillingDashboard";
 import ConsultationPage from "./pages/patient/ConsultationPage";
 import OnboardingPage from "./pages/patient/OnboardingPage";
+import SettingsPage from "./pages/patient/SettingsPage";
+import NotificationsPage from "./pages/patient/NotificationsPage";
 
 import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import DoctorAppointments from "./pages/doctor/DoctorAppointments";
+import DoctorPatients from "./pages/doctor/DoctorPatients";
+import DoctorPrescriptions from "./pages/doctor/DoctorPrescriptions";
+import DoctorMessages from "./pages/doctor/DoctorMessages";
+import DoctorConsultations from "./pages/doctor/DoctorConsultations";
+import DoctorSettings from "./pages/doctor/DoctorSettings";
+
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminDoctors from "./pages/admin/AdminDoctors";
+import AdminAppointments from "./pages/admin/AdminAppointments";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminRevenue from "./pages/admin/AdminRevenue";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -57,26 +71,27 @@ function AppRoutes() {
       <Route path="/patient/ai-assistant" element={<ProtectedRoute allowedRoles={['patient']}><AIAssistant /></ProtectedRoute>} />
       <Route path="/patient/billing" element={<ProtectedRoute allowedRoles={['patient']}><BillingDashboard /></ProtectedRoute>} />
       <Route path="/patient/consultation" element={<ProtectedRoute allowedRoles={['patient']}><ConsultationPage /></ProtectedRoute>} />
-      <Route path="/patient/settings" element={<ProtectedRoute allowedRoles={['patient']}><PlaceholderPage role="patient" title="Settings" /></ProtectedRoute>} />
-      <Route path="/patient/notifications" element={<ProtectedRoute allowedRoles={['patient']}><PlaceholderPage role="patient" title="Notifications" /></ProtectedRoute>} />
+      <Route path="/patient/settings" element={<ProtectedRoute allowedRoles={['patient']}><SettingsPage /></ProtectedRoute>} />
+      <Route path="/patient/notifications" element={<ProtectedRoute allowedRoles={['patient']}><NotificationsPage /></ProtectedRoute>} />
 
       {/* Doctor Routes */}
       <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorDashboard /></ProtectedRoute>} />
-      <Route path="/doctor/appointments" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Appointments" /></ProtectedRoute>} />
-      <Route path="/doctor/patients" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Patients" /></ProtectedRoute>} />
-      <Route path="/doctor/prescriptions" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Prescriptions" /></ProtectedRoute>} />
-      <Route path="/doctor/messages" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Messages" /></ProtectedRoute>} />
-      <Route path="/doctor/consultations" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Consultations" /></ProtectedRoute>} />
-      <Route path="/doctor/settings" element={<ProtectedRoute allowedRoles={['doctor']}><PlaceholderPage role="doctor" title="Settings" /></ProtectedRoute>} />
+      <Route path="/doctor/appointments" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorAppointments /></ProtectedRoute>} />
+      <Route path="/doctor/patients" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorPatients /></ProtectedRoute>} />
+      <Route path="/doctor/prescriptions" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorPrescriptions /></ProtectedRoute>} />
+      <Route path="/doctor/messages" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorMessages /></ProtectedRoute>} />
+      <Route path="/doctor/consultations" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorConsultations /></ProtectedRoute>} />
+      <Route path="/doctor/settings" element={<ProtectedRoute allowedRoles={['doctor']}><DoctorSettings /></ProtectedRoute>} />
+      <Route path="/doctor/video-call" element={<ProtectedRoute allowedRoles={['doctor']}><ConsultationPage /></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="User Management" /></ProtectedRoute>} />
-      <Route path="/admin/doctors" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="Doctor Management" /></ProtectedRoute>} />
-      <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="Appointments" /></ProtectedRoute>} />
-      <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="Analytics" /></ProtectedRoute>} />
-      <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="Revenue" /></ProtectedRoute>} />
-      <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage role="admin" title="Settings" /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+      <Route path="/admin/doctors" element={<ProtectedRoute allowedRoles={['admin']}><AdminDoctors /></ProtectedRoute>} />
+      <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={['admin']}><AdminAppointments /></ProtectedRoute>} />
+      <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
+      <Route path="/admin/revenue" element={<ProtectedRoute allowedRoles={['admin']}><AdminRevenue /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
