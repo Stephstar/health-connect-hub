@@ -1,4 +1,7 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2.95.0/cors";
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const SYSTEM_PROMPT = `You are a calm, careful, helpful AI Health Assistant for a telemedicine platform.
 
