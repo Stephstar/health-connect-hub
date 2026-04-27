@@ -25,15 +25,9 @@ interface Prescription {
   notes: string;
 }
 
-const EXISTING_PRESCRIPTIONS: Prescription[] = [
-  { id: '1', patient: 'Sarah Johnson', date: '2026-03-20', items: [{ medication: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: '30 days' }], status: 'active', notes: 'Monitor blood pressure weekly' },
-  { id: '2', patient: 'James Owusu', date: '2026-03-18', items: [{ medication: 'Metformin', dosage: '500mg', frequency: 'Twice daily', duration: '90 days' }], status: 'active', notes: 'Check HbA1c in 3 months' },
-  { id: '3', patient: 'Grace Mensah', date: '2026-03-10', items: [{ medication: 'Sumatriptan', dosage: '50mg', frequency: 'As needed', duration: '30 days' }], status: 'completed', notes: '' },
-];
-
 export default function DoctorPrescriptions() {
   const { toast } = useToast();
-  const [prescriptions] = useState(EXISTING_PRESCRIPTIONS);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
   const [search, setSearch] = useState('');
   const [newPatient, setNewPatient] = useState('');
