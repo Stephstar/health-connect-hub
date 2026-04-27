@@ -134,7 +134,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUser = useCallback(async (data: Partial<User>) => {
     if (!user) return;
-    const updates: Record<string, unknown> = {};
+    const updates: {
+      full_name?: string;
+      avatar_url?: string;
+      phone?: string;
+      onboarding_complete?: boolean;
+    } = {};
     if (data.name !== undefined) updates.full_name = data.name;
     if (data.avatar !== undefined) updates.avatar_url = data.avatar;
     if (data.phone !== undefined) updates.phone = data.phone;
