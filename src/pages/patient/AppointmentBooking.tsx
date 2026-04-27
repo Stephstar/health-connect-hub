@@ -1,40 +1,36 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useApp } from '@/contexts/AppContext';
+import { useApp, type Doctor } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Search, Video, MapPin, Star, Clock, ChevronLeft, ChevronRight, X, CheckCircle2 } from 'lucide-react';
+import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
-
-const SPECIALTIES = ['All', 'Cardiology', 'Dermatology', 'General Practice', 'Neurology', 'Pediatrics', 'Orthopedics'];
-
-const DOCTORS = [
-  { id: '1', name: 'Dr. Michael Chen', specialty: 'Cardiology', rating: 4.9, reviews: 127, price: 75, avatar: '', available: true, nextSlot: '10:00 AM' },
-  { id: '2', name: 'Dr. Amara Okafor', specialty: 'Dermatology', rating: 4.8, reviews: 98, price: 120, avatar: '', available: true, nextSlot: '2:30 PM' },
-  { id: '3', name: 'Dr. Emily Watson', specialty: 'General Practice', rating: 4.7, reviews: 215, price: 50, avatar: '', available: true, nextSlot: '9:00 AM' },
-  { id: '4', name: 'Dr. James Adeyemi', specialty: 'Neurology', rating: 4.9, reviews: 89, price: 150, avatar: '', available: false, nextSlot: '' },
-  { id: '5', name: 'Dr. Sarah Kim', specialty: 'Pediatrics', rating: 4.6, reviews: 156, price: 65, avatar: '', available: true, nextSlot: '11:30 AM' },
-  { id: '6', name: 'Dr. Robert Mensah', specialty: 'Orthopedics', rating: 4.8, reviews: 73, price: 130, avatar: '', available: true, nextSlot: '3:00 PM' },
-];
+import { useToast } from '@/hooks/use-toast';
 
 const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
 
 export default function AppointmentBooking() {
   const navigate = useNavigate();
-  const { addAppointment } = useApp();
-  const { user } = useAuth();
+  const { doctors, bookAppointment } = useApp();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [specialty, setSpecialty] = useState('All');
   const [consultationType, setConsultationType] = useState<'video' | 'in-person'>('video');
-  const [selectedDoctor, setSelectedDoctor] = useState<typeof DOCTORS[0] | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [step, setStep] = useState<'browse' | 'schedule' | 'confirm' | 'success'>('browse');
+  const [submitting, setSubmitting] = useState(false);
 
-  const filtered = DOCTORS.filter(d => {
+  const specialties = useMemo(() => {
+    const set = new Set<string>(['All']);
+    doctors.forEach(d => set.add(d.specialty));
+    return Array.from(set);
+  }, [doctors]);
+
+  const filtered = doctors.filter(d => {
     const matchSearch = d.name.toLowerCase().includes(search.toLowerCase());
     const matchSpec = specialty === 'All' || d.specialty === specialty;
     return matchSearch && matchSpec;
@@ -47,21 +43,23 @@ export default function AppointmentBooking() {
     return { full: d.toISOString().split('T')[0], day: d.toLocaleDateString('en', { weekday: 'short' }), date: d.getDate(), month: d.toLocaleDateString('en', { month: 'short' }) };
   });
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
-    const apt = {
-      id: Date.now().toString(),
-      doctorName: selectedDoctor.name,
-      doctorSpecialty: selectedDoctor.specialty,
-      doctorAvatar: '',
+    setSubmitting(true);
+    const result = await bookAppointment({
+      doctorId: selectedDoctor.id,
       date: selectedDate,
       time: selectedTime,
       type: consultationType,
-      status: 'upcoming' as const,
       price: selectedDoctor.price,
-    };
-    addAppointment(apt);
-    setStep('success');
+    });
+    setSubmitting(false);
+    if (result) {
+      toast({ title: 'Appointment booked', description: `Your appointment with ${selectedDoctor.name} is confirmed.` });
+      setStep('success');
+    } else {
+      toast({ title: 'Booking failed', description: 'Please try again.', variant: 'destructive' });
+    }
   };
 
   return (
@@ -69,20 +67,18 @@ export default function AppointmentBooking() {
       <div className="space-y-6">
         {step === 'browse' && (
           <>
-            {/* Search and Filters */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search doctors..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
               </div>
               <div className="flex gap-2 flex-wrap">
-                {SPECIALTIES.map(s => (
+                {specialties.map(s => (
                   <Button key={s} variant={specialty === s ? 'default' : 'outline'} size="sm" onClick={() => setSpecialty(s)}>{s}</Button>
                 ))}
               </div>
             </div>
 
-            {/* Consultation Type */}
             <div className="flex gap-3">
               <button
                 onClick={() => setConsultationType('video')}
@@ -98,33 +94,36 @@ export default function AppointmentBooking() {
               </button>
             </div>
 
-            {/* Doctor Cards */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map(doc => (
-                <Card key={doc.id} className={`p-5 shadow-card hover:shadow-card-hover transition-all cursor-pointer ${selectedDoctor?.id === doc.id ? 'ring-2 ring-primary' : ''}`} onClick={() => setSelectedDoctor(doc)}>
-                  <div className="flex items-start gap-4">
-                    <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                      {doc.name.split(' ').slice(1).map(n => n[0]).join('')}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground text-sm">{doc.name}</p>
-                      <p className="text-xs text-muted-foreground">{doc.specialty}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Star className="h-3 w-3 fill-warning text-warning" />
-                        <span className="text-xs font-medium text-foreground">{doc.rating}</span>
-                        <span className="text-xs text-muted-foreground">({doc.reviews})</span>
+            {filtered.length === 0 ? (
+              <Card className="p-8 text-center text-muted-foreground shadow-card">
+                {doctors.length === 0 ? 'Loading doctors...' : 'No doctors match your filters.'}
+              </Card>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map(doc => (
+                  <Card key={doc.id} className={`p-5 shadow-card hover:shadow-card-hover transition-all cursor-pointer ${selectedDoctor?.id === doc.id ? 'ring-2 ring-primary' : ''}`} onClick={() => setSelectedDoctor(doc)}>
+                    <div className="flex items-start gap-4">
+                      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                        {doc.name.split(' ').slice(1).map(n => n[0]).join('')}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground text-sm">{doc.name}</p>
+                        <p className="text-xs text-muted-foreground">{doc.specialty}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="h-3 w-3 fill-warning text-warning" />
+                          <span className="text-xs font-medium text-foreground">{doc.rating}</span>
+                          <span className="text-xs text-muted-foreground">({doc.reviews})</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t">
-                    <span className="text-lg font-bold text-foreground">${doc.price}</span>
-                    <Badge variant={doc.available ? 'default' : 'secondary'}>
-                      {doc.available ? `Next: ${doc.nextSlot}` : 'Unavailable'}
-                    </Badge>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t">
+                      <span className="text-lg font-bold text-foreground">${doc.price}</span>
+                      <Badge variant="default">{doc.yearsExperience}y exp</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             {selectedDoctor && (
               <div className="flex justify-end">
@@ -139,7 +138,7 @@ export default function AppointmentBooking() {
         {step === 'schedule' && selectedDoctor && (
           <div className="max-w-2xl mx-auto space-y-6">
             <Button variant="ghost" onClick={() => setStep('browse')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-            
+
             <Card className="p-6 shadow-card">
               <div className="flex items-center gap-4 mb-6">
                 <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">{selectedDoctor.name.split(' ').slice(1).map(n => n[0]).join('')}</div>
@@ -149,7 +148,6 @@ export default function AppointmentBooking() {
                 </div>
               </div>
 
-              {/* Date Selection */}
               <h4 className="font-semibold text-foreground mb-3">Select Date</h4>
               <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
                 {dates.map(d => (
@@ -165,7 +163,6 @@ export default function AppointmentBooking() {
                 ))}
               </div>
 
-              {/* Time Selection */}
               <h4 className="font-semibold text-foreground mb-3">Select Time</h4>
               <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
                 {TIME_SLOTS.map(t => (
@@ -189,7 +186,7 @@ export default function AppointmentBooking() {
         {step === 'confirm' && selectedDoctor && (
           <div className="max-w-lg mx-auto space-y-6">
             <Button variant="ghost" onClick={() => setStep('schedule')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
-            
+
             <Card className="p-6 shadow-card">
               <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Booking Summary</h3>
               <div className="space-y-3 divide-y">
@@ -200,7 +197,9 @@ export default function AppointmentBooking() {
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Type</span><span className="text-sm text-foreground capitalize">{consultationType === 'video' ? 'Video Call' : 'In-Person'}</span></div>
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Price</span><span className="text-lg font-bold text-foreground">${selectedDoctor.price}</span></div>
               </div>
-              <Button className="w-full mt-6" onClick={handleBook}>Confirm Booking</Button>
+              <Button className="w-full mt-6" onClick={handleBook} disabled={submitting}>
+                {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Booking...</> : 'Confirm Booking'}
+              </Button>
             </Card>
           </div>
         )}
@@ -211,7 +210,7 @@ export default function AppointmentBooking() {
               <CheckCircle2 className="h-10 w-10 text-success" />
             </div>
             <h3 className="text-2xl font-bold font-heading text-foreground">Booking Confirmed!</h3>
-            <p className="text-muted-foreground">Your appointment has been scheduled. You'll receive a confirmation email shortly.</p>
+            <p className="text-muted-foreground">Your appointment has been scheduled. You'll see it on your dashboard.</p>
             <div className="flex gap-3 justify-center">
               <Button onClick={() => navigate('/patient/dashboard')}>Go to Dashboard</Button>
               <Button variant="outline" onClick={() => { setStep('browse'); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); }}>Book Another</Button>
