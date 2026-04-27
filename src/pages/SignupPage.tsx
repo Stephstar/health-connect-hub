@@ -39,10 +39,11 @@ export default function SignupPage() {
     if (!validate()) return;
     try {
       await signup(email, password, name, role);
-      toast({ title: 'Account created!', description: 'Please verify your identity.' });
-      navigate('/verify-2fa');
-    } catch {
-      toast({ title: 'Signup failed', variant: 'destructive' });
+      toast({ title: 'Account created!', description: 'You are now signed in.' });
+      // Routing handled by AuthProvider redirect on isAuthenticated
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Signup failed';
+      toast({ title: 'Signup failed', description: message, variant: 'destructive' });
     }
   };
 

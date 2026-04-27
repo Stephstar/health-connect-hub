@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Plus, Send, Pill, Trash2, Search } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PrescriptionItem {
   medication: string;
@@ -19,26 +21,62 @@ interface PrescriptionItem {
 interface Prescription {
   id: string;
   patient: string;
+  patient_id: string;
   date: string;
   items: PrescriptionItem[];
   status: 'active' | 'completed' | 'expired';
   notes: string;
 }
 
-const EXISTING_PRESCRIPTIONS: Prescription[] = [
-  { id: '1', patient: 'Sarah Johnson', date: '2026-03-20', items: [{ medication: 'Lisinopril', dosage: '10mg', frequency: 'Once daily', duration: '30 days' }], status: 'active', notes: 'Monitor blood pressure weekly' },
-  { id: '2', patient: 'James Owusu', date: '2026-03-18', items: [{ medication: 'Metformin', dosage: '500mg', frequency: 'Twice daily', duration: '90 days' }], status: 'active', notes: 'Check HbA1c in 3 months' },
-  { id: '3', patient: 'Grace Mensah', date: '2026-03-10', items: [{ medication: 'Sumatriptan', dosage: '50mg', frequency: 'As needed', duration: '30 days' }], status: 'completed', notes: '' },
-];
-
 export default function DoctorPrescriptions() {
   const { toast } = useToast();
-  const [prescriptions] = useState(EXISTING_PRESCRIPTIONS);
+  const { user } = useAuth();
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [doctorRecordId, setDoctorRecordId] = useState<string | null>(null);
+  const [patientOptions, setPatientOptions] = useState<{ id: string; name: string }[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
   const [search, setSearch] = useState('');
-  const [newPatient, setNewPatient] = useState('');
+  const [newPatientId, setNewPatientId] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [newItems, setNewItems] = useState<PrescriptionItem[]>([{ medication: '', dosage: '', frequency: '', duration: '' }]);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: doc } = await supabase.from('doctors').select('id').eq('user_id', user.id).maybeSingle();
+      if (!doc) return;
+      setDoctorRecordId(doc.id);
+      const { data: rxs } = await supabase
+        .from('prescriptions')
+        .select('id, items, notes, status, created_at, patient_id')
+        .eq('doctor_id', doc.id)
+        .order('created_at', { ascending: false });
+      const patientIds = Array.from(new Set((rxs || []).map(r => r.patient_id)));
+      const { data: profs } = patientIds.length
+        ? await supabase.from('profiles').select('id, full_name').in('id', patientIds)
+        : { data: [] as { id: string; full_name: string }[] };
+      const profMap = new Map((profs || []).map(p => [p.id, p.full_name || 'Patient']));
+      setPrescriptions((rxs || []).map((r) => ({
+        id: r.id,
+        patient_id: r.patient_id,
+        patient: profMap.get(r.patient_id) || 'Patient',
+        date: new Date(r.created_at).toISOString().split('T')[0],
+        items: (r.items as unknown as PrescriptionItem[]) || [],
+        status: r.status as Prescription['status'],
+        notes: r.notes || '',
+      })));
+
+      const { data: appts } = await supabase
+        .from('appointments')
+        .select('patient_id')
+        .eq('doctor_id', doc.id);
+      const ids = Array.from(new Set((appts || []).map(a => a.patient_id)));
+      if (ids.length) {
+        const { data: ap } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+        setPatientOptions((ap || []).map(p => ({ id: p.id, name: p.full_name || 'Patient' })));
+      }
+    })();
+  }, [user]);
 
   const addItem = () => setNewItems(prev => [...prev, { medication: '', dosage: '', frequency: '', duration: '' }]);
   const removeItem = (i: number) => setNewItems(prev => prev.filter((_, idx) => idx !== i));
@@ -46,14 +84,45 @@ export default function DoctorPrescriptions() {
     setNewItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
   };
 
-  const handleSend = () => {
-    if (!newPatient.trim() || newItems.some(i => !i.medication.trim())) {
+  const handleSend = async () => {
+    if (!newPatientId || newItems.some(i => !i.medication.trim()) || !doctorRecordId) {
       toast({ title: 'Please fill required fields', variant: 'destructive' });
       return;
     }
-    toast({ title: 'Prescription sent', description: `Prescription sent to ${newPatient}` });
+    const { data, error } = await supabase
+      .from('prescriptions')
+      .insert({
+        doctor_id: doctorRecordId,
+        patient_id: newPatientId,
+        items: newItems as unknown as Record<string, unknown>[],
+        notes: newNotes,
+        status: 'active',
+      })
+      .select('id, created_at')
+      .single();
+    if (error || !data) {
+      toast({ title: 'Failed to send prescription', description: error?.message, variant: 'destructive' });
+      return;
+    }
+    await supabase.from('notifications').insert({
+      user_id: newPatientId,
+      title: 'New Prescription',
+      message: `${user?.name} has sent you a new prescription.`,
+      type: 'prescription',
+    });
+    const patientName = patientOptions.find(p => p.id === newPatientId)?.name || 'Patient';
+    setPrescriptions(prev => [{
+      id: data.id,
+      patient_id: newPatientId,
+      patient: patientName,
+      date: new Date(data.created_at).toISOString().split('T')[0],
+      items: newItems,
+      status: 'active',
+      notes: newNotes,
+    }, ...prev]);
+    toast({ title: 'Prescription sent', description: `Sent to ${patientName}` });
     setShowBuilder(false);
-    setNewPatient('');
+    setNewPatientId('');
     setNewNotes('');
     setNewItems([{ medication: '', dosage: '', frequency: '', duration: '' }]);
   };
@@ -75,13 +144,18 @@ export default function DoctorPrescriptions() {
 
         {showBuilder && (
           <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-lg">New Prescription</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">New Prescription</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Patient Name</Label>
-                <Input value={newPatient} onChange={e => setNewPatient(e.target.value)} placeholder="Enter patient name" />
+                <Label>Patient</Label>
+                {patientOptions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No patients yet. Patients become available once they book an appointment with you.</p>
+                ) : (
+                  <select value={newPatientId} onChange={e => setNewPatientId(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">Select patient...</option>
+                    {patientOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -114,7 +188,9 @@ export default function DoctorPrescriptions() {
         )}
 
         <div className="space-y-3">
-          {filtered.map(p => (
+          {filtered.length === 0 ? (
+            <Card className="p-8 text-center text-muted-foreground shadow-card">No prescriptions yet.</Card>
+          ) : filtered.map(p => (
             <Card key={p.id} className="p-4 shadow-card">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
