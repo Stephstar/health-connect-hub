@@ -135,7 +135,12 @@ export default function DashboardLayout({ role, title, children }: DashboardLayo
             <h1 className="text-lg font-semibold font-heading text-foreground">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/${role}/dashboard`)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(role === 'patient' ? '/patient/notifications' : `/${role}/dashboard`)}
+              aria-label="Notifications"
+            >
               <Bell className="h-5 w-5 text-muted-foreground" />
             </Button>
           </div>
