@@ -43,7 +43,8 @@ import AdminSettings from "./pages/admin/AdminSettings";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  if (isLoading) return null;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to={`/${user.role}/dashboard`} replace />;
@@ -51,14 +52,21 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   return <>{children}</>;
 }
 
+function landingTarget(user: { role: string; onboardingComplete?: boolean } | null) {
+  if (!user) return '/';
+  if (user.role === 'patient' && !user.onboardingComplete) return '/onboarding';
+  return `/${user.role}/dashboard`;
+}
+
 function AppRoutes() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  if (isLoading) return null;
 
   return (
     <Routes>
-      <Route path="/" element={isAuthenticated ? <Navigate to={`/${user?.role}/dashboard`} replace /> : <LandingPage />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to={`/${user?.role}/dashboard`} replace /> : <LoginPage />} />
-      <Route path="/signup" element={isAuthenticated ? <Navigate to={`/${user?.role}/dashboard`} replace /> : <SignupPage />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to={landingTarget(user)} replace /> : <LandingPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to={landingTarget(user)} replace /> : <LoginPage />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to={landingTarget(user)} replace /> : <SignupPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/verify-2fa" element={<Verify2FAPage />} />
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
