@@ -31,20 +31,17 @@ export default function LoginPage() {
     e.preventDefault();
     if (!validate()) return;
     try {
-      const result = await login(email, password);
-      if (result.requires2FA) {
-        navigate('/verify-2fa');
-      }
-    } catch {
-      toast({ title: 'Login failed', description: 'Invalid credentials. Try patient@demo.com / password', variant: 'destructive' });
+      await login(email, password);
+      toast({ title: 'Welcome back!', description: 'You are now signed in.' });
+      // Routing handled by AuthProvider redirect on isAuthenticated
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Invalid credentials';
+      toast({ title: 'Login failed', description: message, variant: 'destructive' });
     }
   };
 
   const handleSocialLogin = (provider: string) => {
-    toast({ title: `${provider} Login`, description: `Redirecting to ${provider}...` });
-    setTimeout(() => {
-      login('patient@demo.com', 'password').then(() => navigate('/verify-2fa'));
-    }, 500);
+    toast({ title: `${provider} login`, description: 'Social login will be available soon. Use email & password for now.' });
   };
 
   return (
@@ -61,7 +58,7 @@ export default function LoginPage() {
         <Card className="shadow-elevated">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl font-heading">Sign In</CardTitle>
-            <CardDescription>Use demo accounts: patient@demo.com, doctor@demo.com, or admin@demo.com (password: password)</CardDescription>
+            <CardDescription>Enter your email and password to access your dashboard</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
