@@ -1,38 +1,66 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Search, Calendar, Video, MapPin } from 'lucide-react';
+import { Search, Video, MapPin } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AppointmentRecord {
   id: string; patient: string; doctor: string; specialty: string; date: string; time: string;
-  type: 'video' | 'in-person'; status: 'upcoming' | 'completed' | 'cancelled' | 'in-progress';
+  type: 'video' | 'in-person'; status: string;
 }
 
-const APPOINTMENTS: AppointmentRecord[] = [
-  { id: '1', patient: 'Sarah Johnson', doctor: 'Dr. Michael Chen', specialty: 'Cardiology', date: '2026-03-27', time: '10:00 AM', type: 'video', status: 'upcoming' },
-  { id: '2', patient: 'James Owusu', doctor: 'Dr. Michael Chen', specialty: 'Cardiology', date: '2026-03-27', time: '11:30 AM', type: 'in-person', status: 'upcoming' },
-  { id: '3', patient: 'Grace Mensah', doctor: 'Dr. Amara Okafor', specialty: 'Dermatology', date: '2026-03-27', time: '2:00 PM', type: 'video', status: 'in-progress' },
-  { id: '4', patient: 'Kofi Agyeman', doctor: 'Dr. Emily Watson', specialty: 'General Practice', date: '2026-03-26', time: '9:00 AM', type: 'in-person', status: 'completed' },
-  { id: '5', patient: 'Ama Darko', doctor: 'Dr. Amara Okafor', specialty: 'Dermatology', date: '2026-03-25', time: '3:00 PM', type: 'video', status: 'completed' },
-  { id: '6', patient: 'Yaw Mensah', doctor: 'Dr. Michael Chen', specialty: 'Cardiology', date: '2026-03-24', time: '10:00 AM', type: 'video', status: 'cancelled' },
-];
-
 export default function AdminAppointments() {
+  const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-  const filtered = APPOINTMENTS.filter(a => {
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('appointments')
+      .select('id, appointment_date, appointment_time, type, status, patient_id, doctor_id, doctors!inner(full_name, specialty)')
+      .order('appointment_date', { ascending: false })
+      .limit(100);
+
+    if (data) {
+      const patientIds = [...new Set(data.map(a => a.patient_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', patientIds);
+      const pMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
+
+      setAppointments(data.map((a: any) => ({
+        id: a.id,
+        patient: pMap.get(a.patient_id) || 'Unknown',
+        doctor: a.doctors.full_name,
+        specialty: a.doctors.specialty,
+        date: a.appointment_date,
+        time: a.appointment_time,
+        type: a.type,
+        status: a.status,
+      })));
+    }
+    setLoading(false);
+  };
+
+  const filtered = appointments.filter(a => {
     const m1 = a.patient.toLowerCase().includes(search.toLowerCase()) || a.doctor.toLowerCase().includes(search.toLowerCase());
     const m2 = statusFilter === 'all' || a.status === statusFilter;
     return m1 && m2;
   });
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayApts = appointments.filter(a => a.date === todayStr);
+
   const statusColors: Record<string, string> = {
-    upcoming: 'bg-primary/10 text-primary', 'in-progress': 'bg-warning/10 text-warning',
+    upcoming: 'bg-primary/10 text-primary', pending: 'bg-warning/10 text-warning',
     completed: 'bg-success/10 text-success', cancelled: 'bg-destructive/10 text-destructive',
   };
 
@@ -41,10 +69,10 @@ export default function AdminAppointments() {
       <div className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Today', value: '47', color: 'text-primary bg-primary/10' },
-            { label: 'In Progress', value: '12', color: 'text-warning bg-warning/10' },
-            { label: 'Completed', value: '28', color: 'text-success bg-success/10' },
-            { label: 'Cancelled', value: '7', color: 'text-destructive bg-destructive/10' },
+            { label: 'Total Today', value: String(todayApts.length), color: 'text-primary bg-primary/10' },
+            { label: 'Upcoming', value: String(todayApts.filter(a => a.status === 'upcoming').length), color: 'text-warning bg-warning/10' },
+            { label: 'Completed', value: String(todayApts.filter(a => a.status === 'completed').length), color: 'text-success bg-success/10' },
+            { label: 'Cancelled', value: String(todayApts.filter(a => a.status === 'cancelled').length), color: 'text-destructive bg-destructive/10' },
           ].map(s => (
             <Card key={s.label} className="p-4 shadow-card">
               <p className="text-2xl font-bold text-foreground">{s.value}</p>
@@ -59,7 +87,7 @@ export default function AdminAppointments() {
             <Input placeholder="Search patient or doctor..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <div className="flex gap-2 flex-wrap">
-            {['all', 'upcoming', 'in-progress', 'completed', 'cancelled'].map(s => (
+            {['all', 'upcoming', 'pending', 'completed', 'cancelled'].map(s => (
               <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter(s)} className="capitalize">{s === 'all' ? 'All' : s}</Button>
             ))}
           </div>
@@ -89,9 +117,12 @@ export default function AdminAppointments() {
                       {a.type === 'video' ? <><Video className="h-3 w-3 mr-0.5" />Video</> : <><MapPin className="h-3 w-3 mr-0.5" />In-Person</>}
                     </Badge>
                   </TableCell>
-                  <TableCell><Badge className={`${statusColors[a.status]} border-0 text-xs capitalize`}>{a.status}</Badge></TableCell>
+                  <TableCell><Badge className={`${statusColors[a.status] || ''} border-0 text-xs capitalize`}>{a.status}</Badge></TableCell>
                 </TableRow>
               ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No appointments found.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>

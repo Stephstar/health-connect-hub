@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,29 +6,47 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Search, UserCheck, UserX, MoreVertical, Filter } from 'lucide-react';
+import { Search, UserCheck, UserX } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserRecord {
-  id: string; name: string; email: string; role: 'patient' | 'doctor' | 'admin'; status: 'active' | 'suspended' | 'pending'; joined: string; lastActive: string;
+  id: string; name: string; email: string; role: string; status: string; joined: string;
 }
-
-const INITIAL_USERS: UserRecord[] = [
-  { id: '1', name: 'Sarah Johnson', email: 'sarah@email.com', role: 'patient', status: 'active', joined: '2026-01-15', lastActive: '2026-03-27' },
-  { id: '2', name: 'James Owusu', email: 'james@email.com', role: 'patient', status: 'active', joined: '2026-02-10', lastActive: '2026-03-26' },
-  { id: '3', name: 'Dr. Michael Chen', email: 'mchen@email.com', role: 'doctor', status: 'active', joined: '2025-11-01', lastActive: '2026-03-27' },
-  { id: '4', name: 'Dr. Amara Okafor', email: 'aokafor@email.com', role: 'doctor', status: 'active', joined: '2025-12-15', lastActive: '2026-03-25' },
-  { id: '5', name: 'Grace Mensah', email: 'grace@email.com', role: 'patient', status: 'suspended', joined: '2026-01-20', lastActive: '2026-03-10' },
-  { id: '6', name: 'Dr. Lisa Nguyen', email: 'lisa@email.com', role: 'doctor', status: 'pending', joined: '2026-03-25', lastActive: '2026-03-25' },
-  { id: '7', name: 'Kofi Agyeman', email: 'kofi@email.com', role: 'patient', status: 'active', joined: '2026-03-01', lastActive: '2026-03-27' },
-  { id: '8', name: 'Admin User', email: 'admin@demo.com', role: 'admin', status: 'active', joined: '2025-01-01', lastActive: '2026-03-27' },
-];
 
 export default function AdminUsers() {
   const { toast } = useToast();
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadUsers(); }, []);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (profiles) {
+      const ids = profiles.map(p => p.id);
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', ids);
+      const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
+
+      setUsers(profiles.map(p => ({
+        id: p.id,
+        name: p.full_name,
+        email: p.email,
+        role: roleMap.get(p.id) || 'patient',
+        status: p.status,
+        joined: p.created_at.split('T')[0],
+      })));
+    }
+    setLoading(false);
+  };
 
   const filtered = users.filter(u => {
     const m1 = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
@@ -37,18 +55,11 @@ export default function AdminUsers() {
     return m1 && m2 && m3;
   });
 
-  const toggleStatus = (id: string) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id !== id) return u;
-      const newStatus = u.status === 'active' ? 'suspended' : 'active';
-      toast({ title: `User ${newStatus}`, description: `${u.name} has been ${newStatus}.` });
-      return { ...u, status: newStatus as UserRecord['status'] };
-    }));
-  };
-
-  const approveUser = (id: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' as const } : u));
-    toast({ title: 'User approved' });
+  const toggleStatus = async (u: UserRecord) => {
+    const newStatus = u.status === 'active' ? 'suspended' : 'active';
+    await supabase.from('profiles').update({ status: newStatus }).eq('id', u.id);
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: newStatus } : x));
+    toast({ title: `User ${newStatus}`, description: `${u.name} has been ${newStatus}.` });
   };
 
   const statusBadge = (s: string) => {
@@ -70,7 +81,7 @@ export default function AdminUsers() {
             ))}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {['all', 'active', 'suspended', 'pending'].map(s => (
+            {['all', 'active', 'suspended'].map(s => (
               <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter(s)} className="capitalize">{s === 'all' ? 'All Status' : s}</Button>
             ))}
           </div>
@@ -84,7 +95,6 @@ export default function AdminUsers() {
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead>Last Active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -103,19 +113,18 @@ export default function AdminUsers() {
                   <TableCell><Badge variant="secondary" className="capitalize text-xs">{u.role}</Badge></TableCell>
                   <TableCell>{statusBadge(u.status)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.joined}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.lastActive}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {u.status === 'pending' && <Button size="sm" onClick={() => approveUser(u.id)}><UserCheck className="h-3 w-3 mr-1" />Approve</Button>}
-                      {u.status !== 'pending' && u.role !== 'admin' && (
-                        <Button size="sm" variant={u.status === 'active' ? 'outline' : 'default'} onClick={() => toggleStatus(u.id)}>
-                          {u.status === 'active' ? <><UserX className="h-3 w-3 mr-1" />Suspend</> : <><UserCheck className="h-3 w-3 mr-1" />Activate</>}
-                        </Button>
-                      )}
-                    </div>
+                    {u.role !== 'admin' && (
+                      <Button size="sm" variant={u.status === 'active' ? 'outline' : 'default'} onClick={() => toggleStatus(u)}>
+                        {u.status === 'active' ? <><UserX className="h-3 w-3 mr-1" />Suspend</> : <><UserCheck className="h-3 w-3 mr-1" />Activate</>}
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No users found.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>

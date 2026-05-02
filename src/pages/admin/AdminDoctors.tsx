@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,26 +7,47 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Search, UserCheck, UserX, Star, CheckCircle2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Doctor {
-  id: string; name: string; email: string; specialty: string; status: 'active' | 'pending' | 'suspended';
-  rating: number; patients: number; joined: string; license: string;
+  id: string; name: string; email: string; specialty: string; status: string;
+  rating: number; reviews: number; joined: string;
 }
-
-const DOCTORS: Doctor[] = [
-  { id: '1', name: 'Dr. Michael Chen', email: 'mchen@email.com', specialty: 'Cardiology', status: 'active', rating: 4.9, patients: 245, joined: '2025-11-01', license: 'MC-2014-05821' },
-  { id: '2', name: 'Dr. Amara Okafor', email: 'aokafor@email.com', specialty: 'Dermatology', status: 'active', rating: 4.8, patients: 189, joined: '2025-12-15', license: 'MC-2016-08234' },
-  { id: '3', name: 'Dr. Emily Watson', email: 'ewatson@email.com', specialty: 'General Practice', status: 'active', rating: 4.7, patients: 320, joined: '2025-10-01', license: 'MC-2012-03412' },
-  { id: '4', name: 'Dr. Lisa Nguyen', email: 'lisa@email.com', specialty: 'Pediatrics', status: 'pending', rating: 0, patients: 0, joined: '2026-03-25', license: 'MC-2020-11234' },
-  { id: '5', name: 'Dr. Ahmed Hassan', email: 'ahmed@email.com', specialty: 'Orthopedics', status: 'pending', rating: 0, patients: 0, joined: '2026-03-26', license: 'MC-2019-09876' },
-  { id: '6', name: 'Dr. Robert Mensah', email: 'rmensah@email.com', specialty: 'Neurology', status: 'suspended', rating: 3.2, patients: 45, joined: '2025-09-01', license: 'MC-2015-06543' },
-];
 
 export default function AdminDoctors() {
   const { toast } = useToast();
-  const [doctors, setDoctors] = useState(DOCTORS);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadDoctors(); }, []);
+
+  const loadDoctors = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('doctors')
+      .select('id, user_id, full_name, specialty, status, rating, reviews_count, created_at')
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      const userIds = data.filter(d => d.user_id).map(d => d.user_id!);
+      const { data: profiles } = await supabase.from('profiles').select('id, email').in('id', userIds);
+      const emailMap = new Map((profiles || []).map(p => [p.id, p.email]));
+
+      setDoctors(data.map(d => ({
+        id: d.id,
+        name: d.full_name,
+        email: d.user_id ? emailMap.get(d.user_id) || '' : '',
+        specialty: d.specialty,
+        status: d.status,
+        rating: Number(d.rating),
+        reviews: d.reviews_count,
+        joined: d.created_at.split('T')[0],
+      })));
+    }
+    setLoading(false);
+  };
 
   const filtered = doctors.filter(d => {
     const m1 = d.name.toLowerCase().includes(search.toLowerCase()) || d.specialty.toLowerCase().includes(search.toLowerCase());
@@ -34,14 +55,15 @@ export default function AdminDoctors() {
     return m1 && m2;
   });
 
-  const updateStatus = (id: string, status: Doctor['status'], msg: string) => {
+  const updateStatus = async (id: string, status: string, msg: string) => {
+    await supabase.from('doctors').update({ status }).eq('id', id);
     setDoctors(prev => prev.map(d => d.id === id ? { ...d, status } : d));
     toast({ title: msg });
   };
 
   const statusBadge = (s: string) => {
-    const c: Record<string, string> = { active: 'bg-success/10 text-success', pending: 'bg-warning/10 text-warning', suspended: 'bg-destructive/10 text-destructive' };
-    return <Badge className={`${c[s]} border-0 text-xs capitalize`}>{s}</Badge>;
+    const c: Record<string, string> = { verified: 'bg-success/10 text-success', pending: 'bg-warning/10 text-warning', suspended: 'bg-destructive/10 text-destructive' };
+    return <Badge className={`${c[s] || ''} border-0 text-xs capitalize`}>{s === 'verified' ? 'active' : s}</Badge>;
   };
 
   return (
@@ -53,8 +75,8 @@ export default function AdminDoctors() {
             <Input placeholder="Search doctors..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
           <div className="flex gap-2">
-            {['all', 'active', 'pending', 'suspended'].map(s => (
-              <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter(s)} className="capitalize">{s === 'all' ? 'All' : s}</Button>
+            {['all', 'verified', 'pending', 'suspended'].map(s => (
+              <Button key={s} variant={statusFilter === s ? 'default' : 'outline'} size="sm" onClick={() => setStatusFilter(s)} className="capitalize">{s === 'all' ? 'All' : s === 'verified' ? 'Active' : s}</Button>
             ))}
           </div>
         </div>
@@ -65,9 +87,8 @@ export default function AdminDoctors() {
               <TableRow>
                 <TableHead>Doctor</TableHead>
                 <TableHead>Specialty</TableHead>
-                <TableHead>License</TableHead>
                 <TableHead>Rating</TableHead>
-                <TableHead>Patients</TableHead>
+                <TableHead>Reviews</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -85,24 +106,26 @@ export default function AdminDoctors() {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{d.specialty}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{d.license}</TableCell>
                   <TableCell>{d.rating > 0 ? <span className="flex items-center gap-1 text-sm"><Star className="h-3 w-3 text-warning fill-warning" />{d.rating}</span> : <span className="text-xs text-muted-foreground">N/A</span>}</TableCell>
-                  <TableCell className="text-sm">{d.patients}</TableCell>
+                  <TableCell className="text-sm">{d.reviews}</TableCell>
                   <TableCell>{statusBadge(d.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {d.status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => updateStatus(d.id, 'active', `${d.name} approved`)}><CheckCircle2 className="h-3 w-3 mr-1" />Approve</Button>
+                          <Button size="sm" onClick={() => updateStatus(d.id, 'verified', `${d.name} approved`)}><CheckCircle2 className="h-3 w-3 mr-1" />Approve</Button>
                           <Button size="sm" variant="outline" onClick={() => updateStatus(d.id, 'suspended', `${d.name} rejected`)}><UserX className="h-3 w-3 mr-1" />Reject</Button>
                         </>
                       )}
-                      {d.status === 'active' && <Button size="sm" variant="outline" onClick={() => updateStatus(d.id, 'suspended', `${d.name} suspended`)}><UserX className="h-3 w-3 mr-1" />Suspend</Button>}
-                      {d.status === 'suspended' && <Button size="sm" onClick={() => updateStatus(d.id, 'active', `${d.name} reactivated`)}><UserCheck className="h-3 w-3 mr-1" />Activate</Button>}
+                      {d.status === 'verified' && <Button size="sm" variant="outline" onClick={() => updateStatus(d.id, 'suspended', `${d.name} suspended`)}><UserX className="h-3 w-3 mr-1" />Suspend</Button>}
+                      {d.status === 'suspended' && <Button size="sm" onClick={() => updateStatus(d.id, 'verified', `${d.name} reactivated`)}><UserCheck className="h-3 w-3 mr-1" />Activate</Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No doctors found.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>
