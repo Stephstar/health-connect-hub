@@ -91,13 +91,13 @@ export default function DoctorPrescriptions() {
     }
     const { data, error } = await supabase
       .from('prescriptions')
-      .insert({
+      .insert([{
         doctor_id: doctorRecordId,
         patient_id: newPatientId,
         items: newItems as unknown as Record<string, unknown>[],
         notes: newNotes,
-        status: 'active',
-      })
+        status: 'active' as const,
+      }])
       .select('id, created_at')
       .single();
     if (error || !data) {

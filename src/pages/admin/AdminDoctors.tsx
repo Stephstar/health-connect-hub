@@ -55,7 +55,7 @@ export default function AdminDoctors() {
     return m1 && m2;
   });
 
-  const updateStatus = async (id: string, status: string, msg: string) => {
+  const updateStatus = async (id: string, status: 'verified' | 'pending' | 'suspended', msg: string) => {
     await supabase.from('doctors').update({ status }).eq('id', id);
     setDoctors(prev => prev.map(d => d.id === id ? { ...d, status } : d));
     toast({ title: msg });

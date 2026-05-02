@@ -63,7 +63,7 @@ export default function DoctorAppointments() {
     return matchesFilter && matchesSearch;
   });
 
-  const updateStatus = async (id: string, status: string, msg: string) => {
+  const updateStatus = async (id: string, status: 'upcoming' | 'completed' | 'cancelled' | 'pending', msg: string) => {
     await supabase.from('appointments').update({ status }).eq('id', id);
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
     toast({ title: msg });
