@@ -94,7 +94,7 @@ export default function DoctorPrescriptions() {
       .insert([{
         doctor_id: doctorRecordId,
         patient_id: newPatientId,
-        items: newItems as unknown as Record<string, unknown>[],
+        items: JSON.parse(JSON.stringify(newItems)),
         notes: newNotes,
         status: 'active' as const,
       }])
