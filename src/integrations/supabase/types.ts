@@ -214,26 +214,35 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_name: string | null
+          attachment_url: string | null
           content: string
           created_at: string
           id: string
           is_read: boolean
+          message_type: string
           recipient_id: string
           sender_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           content: string
           created_at?: string
           id?: string
           is_read?: boolean
+          message_type?: string
           recipient_id: string
           sender_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           content?: string
           created_at?: string
           id?: string
           is_read?: boolean
+          message_type?: string
           recipient_id?: string
           sender_id?: string
         }
