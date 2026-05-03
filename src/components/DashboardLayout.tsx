@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   Heart, Home, Calendar, FileText, MessageSquare, Brain, CreditCard,
   Settings, LogOut, User, Menu, X, Bell, Users, BarChart3,
-  Stethoscope, ClipboardList, Video
+  Stethoscope, ClipboardList, Video, ChevronLeft
 } from 'lucide-react';
 
 const navItems = {
@@ -50,6 +50,9 @@ export default function DashboardLayout({ role, title, children }: DashboardLayo
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const items = navItems[role];
+
+  const dashboardPath = `/${role}/dashboard`;
+  const isOnDashboard = location.pathname === dashboardPath;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -130,8 +133,13 @@ export default function DashboardLayout({ role, title, children }: DashboardLayo
       {/* Main Content */}
       <main className="flex-1 lg:ml-64">
         <header className="h-16 border-b bg-card flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button className="lg:hidden" onClick={() => setMobileMenuOpen(true)}><Menu className="h-5 w-5" /></button>
+            {!isOnDashboard && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(-1)} aria-label="Go back">
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
             <h1 className="text-lg font-semibold font-heading text-foreground">{title}</h1>
           </div>
           <div className="flex items-center gap-2">

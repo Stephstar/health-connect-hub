@@ -7,6 +7,7 @@ import { Brain, Send, AlertTriangle, CheckCircle2, Activity } from 'lucide-react
 import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatMsg {
   id: string;
@@ -22,7 +23,7 @@ export default function AIAssistant() {
     {
       id: '0',
       role: 'assistant',
-      content: "Hello! I'm your AI Health Assistant. I can help you assess symptoms, share health information, and recommend when to see a doctor.\n\nPlease describe your symptoms.\n\n*This is not medical advice. Book an appointment for a proper evaluation.*",
+      content: "Hello! I'm your **AI Health Assistant**. I can help you:\n\n- 🩺 Assess your symptoms\n- 💡 Share health tips & information\n- ⚠️ Recommend when to see a doctor\n\nPlease describe your symptoms or ask a health question.\n\n> *This is not medical advice. Always book an appointment for a proper evaluation.*",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       urgency: 'low',
     },
@@ -83,6 +84,13 @@ export default function AIAssistant() {
     return <Badge className={c.className}>{c.label}</Badge>;
   };
 
+  const quickPrompts = [
+    "I have a headache",
+    "I feel tired all the time",
+    "I have a sore throat",
+    "When should I see a doctor?",
+  ];
+
   return (
     <DashboardLayout role="patient" title="AI Health Assistant">
       <div className="flex flex-col h-[calc(100vh-12rem)]">
@@ -117,7 +125,13 @@ export default function AIAssistant() {
                     </div>
                   )}
                   <div className={`rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'}`}>
-                    <div className="text-sm whitespace-pre-line">{msg.content}</div>
+                    {msg.role === 'assistant' ? (
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>blockquote]:border-l-2 [&>blockquote]:border-primary/30 [&>blockquote]:pl-3 [&>blockquote]:italic [&>blockquote]:text-muted-foreground">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="text-sm whitespace-pre-line">{msg.content}</div>
+                    )}
                     <p className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{msg.timestamp}</p>
                   </div>
                 </div>
@@ -136,6 +150,18 @@ export default function AIAssistant() {
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Quick prompts */}
+          {messages.length <= 1 && (
+            <div className="px-4 pb-2 flex flex-wrap gap-2">
+              {quickPrompts.map(p => (
+                <button key={p} onClick={() => { setInput(p); }} className="text-xs px-3 py-1.5 rounded-full border border-primary/20 text-primary hover:bg-primary/5 transition-colors">
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="border-t p-3 flex gap-2">
             <Input
               placeholder="Describe your symptoms..."

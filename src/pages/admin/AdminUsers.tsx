@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Search, UserCheck, UserX } from 'lucide-react';
+import { Search, UserCheck, UserX, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UserRecord {
@@ -20,6 +21,8 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ user: UserRecord; newStatus: string } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
 
@@ -55,11 +58,24 @@ export default function AdminUsers() {
     return m1 && m2 && m3;
   });
 
-  const toggleStatus = async (u: UserRecord) => {
+  const requestToggle = (u: UserRecord) => {
     const newStatus = u.status === 'active' ? 'suspended' : 'active';
-    await supabase.from('profiles').update({ status: newStatus }).eq('id', u.id);
-    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: newStatus } : x));
-    toast({ title: `User ${newStatus}`, description: `${u.name} has been ${newStatus}.` });
+    setConfirmAction({ user: u, newStatus });
+  };
+
+  const executeToggle = async () => {
+    if (!confirmAction) return;
+    setActionLoading(true);
+    const { user: u, newStatus } = confirmAction;
+    const { error } = await supabase.from('profiles').update({ status: newStatus as any }).eq('id', u.id);
+    if (error) {
+      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+    } else {
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: newStatus } : x));
+      toast({ title: `User ${newStatus}`, description: `${u.name} has been ${newStatus}.` });
+    }
+    setActionLoading(false);
+    setConfirmAction(null);
   };
 
   const statusBadge = (s: string) => {
@@ -115,7 +131,7 @@ export default function AdminUsers() {
                   <TableCell className="text-sm text-muted-foreground">{u.joined}</TableCell>
                   <TableCell className="text-right">
                     {u.role !== 'admin' && (
-                      <Button size="sm" variant={u.status === 'active' ? 'outline' : 'default'} onClick={() => toggleStatus(u)}>
+                      <Button size="sm" variant={u.status === 'active' ? 'outline' : 'default'} onClick={() => requestToggle(u)}>
                         {u.status === 'active' ? <><UserX className="h-3 w-3 mr-1" />Suspend</> : <><UserCheck className="h-3 w-3 mr-1" />Activate</>}
                       </Button>
                     )}
@@ -129,6 +145,27 @@ export default function AdminUsers() {
           </Table>
         </Card>
       </div>
+
+      <Dialog open={!!confirmAction} onOpenChange={open => { if (!open) setConfirmAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Confirm {confirmAction?.newStatus === 'suspended' ? 'Suspension' : 'Activation'}
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {confirmAction?.newStatus === 'suspended' ? 'suspend' : 'activate'} <strong>{confirmAction?.user.name}</strong>?
+              {confirmAction?.newStatus === 'suspended' && ' This user will lose access to the platform immediately.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={actionLoading}>Cancel</Button>
+            <Button variant={confirmAction?.newStatus === 'suspended' ? 'destructive' : 'default'} onClick={executeToggle} disabled={actionLoading}>
+              {actionLoading ? 'Processing...' : confirmAction?.newStatus === 'suspended' ? 'Suspend User' : 'Activate User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -60,20 +60,25 @@ export default function AdminDashboard() {
   };
 
   const handleApproveDoctor = async (doc: PendingDoctor) => {
-    await supabase.from('doctors').update({ status: 'verified' }).eq('id', doc.id);
+    if (!confirm(`Approve ${doc.name} as a verified doctor?`)) return;
+    const { error } = await supabase.from('doctors').update({ status: 'verified' }).eq('id', doc.id);
+    if (error) { toast({ title: 'Failed to approve', description: error.message, variant: 'destructive' }); return; }
     setPendingDoctors(prev => prev.filter(d => d.id !== doc.id));
     toast({ title: `${doc.name} approved`, description: 'Doctor account has been activated.' });
     setStats(prev => ({ ...prev, doctors: prev.doctors + 1 }));
   };
 
   const handleRejectDoctor = async (doc: PendingDoctor) => {
+    if (!confirm(`Reject ${doc.name}? This will suspend their account.`)) return;
     await supabase.from('doctors').update({ status: 'suspended' }).eq('id', doc.id);
     setPendingDoctors(prev => prev.filter(d => d.id !== doc.id));
     toast({ title: `${doc.name} rejected` });
   };
 
   const handleSuspendUser = async (u: RecentUser) => {
-    await supabase.from('profiles').update({ status: 'suspended' }).eq('id', u.id);
+    if (!confirm(`Suspend ${u.name}?`)) return;
+    const { error } = await supabase.from('profiles').update({ status: 'suspended' }).eq('id', u.id);
+    if (error) { toast({ title: 'Failed', description: error.message, variant: 'destructive' }); return; }
     setRecentUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'suspended' } : x));
     toast({ title: `${u.name} suspended` });
   };
