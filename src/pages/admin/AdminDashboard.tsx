@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { Users, Stethoscope, Calendar, DollarSign, TrendingUp, UserCheck, UserX } from 'lucide-react';
+import { Users, Stethoscope, Calendar, DollarSign, UserCheck, UserX, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PendingDoctor { id: string; name: string; specialty: string; }
@@ -14,14 +16,22 @@ interface RecentUser { id: string; name: string; role: string; status: string; j
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [stats, setStats] = useState({ users: 0, doctors: 0, appointmentsToday: 0, revenue: 0 });
   const [pendingDoctors, setPendingDoctors] = useState<PendingDoctor[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'approve' | 'reject' | 'suspend'; target: { id: string; name: string } } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
+
+  const checkAdmin = async () => {
+    if (!user) return false;
+    const { data } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+    if (!data) { toast({ title: 'Access denied', description: 'Admin role required.', variant: 'destructive' }); return false; }
+    return true;
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -35,52 +45,42 @@ export default function AdminDashboard() {
     ]);
 
     const totalRevenue = (invoicesRes.data || []).reduce((sum, inv) => sum + Number(inv.amount), 0);
-    setStats({
-      users: profilesRes.count || 0,
-      doctors: doctorsRes.count || 0,
-      appointmentsToday: aptsRes.count || 0,
-      revenue: totalRevenue,
-    });
-
+    setStats({ users: profilesRes.count || 0, doctors: doctorsRes.count || 0, appointmentsToday: aptsRes.count || 0, revenue: totalRevenue });
     setPendingDoctors((pendingRes.data || []).map(d => ({ id: d.id, name: d.full_name, specialty: d.specialty })));
 
-    // Get roles for recent users
     const userIds = (recentRes.data || []).map(u => u.id);
     const { data: roles } = await supabase.from('user_roles').select('user_id, role').in('user_id', userIds);
     const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
-
-    setRecentUsers((recentRes.data || []).map(u => ({
-      id: u.id,
-      name: u.full_name,
-      role: roleMap.get(u.id) || 'patient',
-      status: u.status,
-      joined: u.created_at.split('T')[0],
-    })));
+    setRecentUsers((recentRes.data || []).map(u => ({ id: u.id, name: u.full_name, role: roleMap.get(u.id) || 'patient', status: u.status, joined: u.created_at.split('T')[0] })));
     setLoading(false);
   };
 
-  const handleApproveDoctor = async (doc: PendingDoctor) => {
-    if (!confirm(`Approve ${doc.name} as a verified doctor?`)) return;
-    const { error } = await supabase.from('doctors').update({ status: 'verified' }).eq('id', doc.id);
-    if (error) { toast({ title: 'Failed to approve', description: error.message, variant: 'destructive' }); return; }
-    setPendingDoctors(prev => prev.filter(d => d.id !== doc.id));
-    toast({ title: `${doc.name} approved`, description: 'Doctor account has been activated.' });
-    setStats(prev => ({ ...prev, doctors: prev.doctors + 1 }));
-  };
+  const executeAction = async () => {
+    if (!confirmAction) return;
+    if (!(await checkAdmin())) { setConfirmAction(null); return; }
+    setActionLoading(true);
+    const { type, target } = confirmAction;
+    let error: any = null;
 
-  const handleRejectDoctor = async (doc: PendingDoctor) => {
-    if (!confirm(`Reject ${doc.name}? This will suspend their account.`)) return;
-    await supabase.from('doctors').update({ status: 'suspended' }).eq('id', doc.id);
-    setPendingDoctors(prev => prev.filter(d => d.id !== doc.id));
-    toast({ title: `${doc.name} rejected` });
-  };
+    if (type === 'approve') {
+      ({ error } = await supabase.from('doctors').update({ status: 'verified' as any }).eq('id', target.id));
+      if (!error) { setPendingDoctors(prev => prev.filter(d => d.id !== target.id)); setStats(prev => ({ ...prev, doctors: prev.doctors + 1 })); }
+    } else if (type === 'reject') {
+      ({ error } = await supabase.from('doctors').update({ status: 'suspended' as any }).eq('id', target.id));
+      if (!error) setPendingDoctors(prev => prev.filter(d => d.id !== target.id));
+    } else if (type === 'suspend') {
+      ({ error } = await supabase.from('profiles').update({ status: 'suspended' as any }).eq('id', target.id));
+      if (!error) setRecentUsers(prev => prev.map(x => x.id === target.id ? { ...x, status: 'suspended' } : x));
+    }
 
-  const handleSuspendUser = async (u: RecentUser) => {
-    if (!confirm(`Suspend ${u.name}?`)) return;
-    const { error } = await supabase.from('profiles').update({ status: 'suspended' }).eq('id', u.id);
-    if (error) { toast({ title: 'Failed', description: error.message, variant: 'destructive' }); return; }
-    setRecentUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: 'suspended' } : x));
-    toast({ title: `${u.name} suspended` });
+    if (error) {
+      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+    } else {
+      const labels = { approve: 'approved', reject: 'rejected', suspend: 'suspended' };
+      toast({ title: `${target.name} ${labels[type]}` });
+    }
+    setActionLoading(false);
+    setConfirmAction(null);
   };
 
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : String(n);
@@ -121,8 +121,8 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleApproveDoctor(doc)}><UserCheck className="h-3 w-3 mr-1" /> Approve</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRejectDoctor(doc)}><UserX className="h-3 w-3 mr-1" /> Reject</Button>
+                      <Button size="sm" onClick={() => setConfirmAction({ type: 'approve', target: doc })}><UserCheck className="h-3 w-3 mr-1" /> Approve</Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmAction({ type: 'reject', target: doc })}><UserX className="h-3 w-3 mr-1" /> Reject</Button>
                     </div>
                   </div>
                 </Card>
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-2">
                       <Badge variant="default" className="capitalize">{u.status}</Badge>
                       {u.role !== 'admin' && u.status === 'active' && (
-                        <Button size="sm" variant="ghost" onClick={() => handleSuspendUser(u)}>Suspend</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ type: 'suspend', target: { id: u.id, name: u.name } })}>Suspend</Button>
                       )}
                     </div>
                   </div>
@@ -156,6 +156,28 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!confirmAction} onOpenChange={open => { if (!open) setConfirmAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Confirm {confirmAction?.type === 'approve' ? 'Approval' : confirmAction?.type === 'reject' ? 'Rejection' : 'Suspension'}
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {confirmAction?.type} <strong>{confirmAction?.target.name}</strong>?
+              {confirmAction?.type === 'suspend' && ' This user will lose access immediately.'}
+              {confirmAction?.type === 'reject' && ' The doctor account will be suspended.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={actionLoading}>Cancel</Button>
+            <Button variant={confirmAction?.type === 'approve' ? 'default' : 'destructive'} onClick={executeAction} disabled={actionLoading}>
+              {actionLoading ? 'Processing…' : confirmAction?.type === 'approve' ? 'Approve' : confirmAction?.type === 'reject' ? 'Reject' : 'Suspend'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

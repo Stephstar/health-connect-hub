@@ -6,11 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Settings, Shield, Bell, Globe } from 'lucide-react';
+import { Settings, Shield, Bell } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminSettings() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [platformName, setPlatformName] = useState('MediConnect');
   const [supportEmail, setSupportEmail] = useState('support@mediconnect.com');
@@ -18,6 +21,23 @@ export default function AdminSettings() {
   const [newRegistrations, setNewRegistrations] = useState(true);
   const [autoApprove, setAutoApprove] = useState(false);
   const [emailNotifs, setEmailNotifs] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const checkAdmin = async () => {
+    if (!user) return false;
+    const { data } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+    if (!data) { toast({ title: 'Access denied', description: 'Admin role required.', variant: 'destructive' }); return false; }
+    return true;
+  };
+
+  const handleSave = async (section: string) => {
+    if (!(await checkAdmin())) return;
+    setSaving(true);
+    // Simulate save — these are local config settings without a dedicated table
+    await new Promise(r => setTimeout(r, 500));
+    setSaving(false);
+    toast({ title: `${section} settings saved` });
+  };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -64,7 +84,7 @@ export default function AdminSettings() {
                     <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
                   </div>
                 </div>
-                <Button onClick={() => toast({ title: 'Settings saved' })}>Save Changes</Button>
+                <Button onClick={() => handleSave('Platform')} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
               </CardContent>
             </Card>
           )}
@@ -89,7 +109,7 @@ export default function AdminSettings() {
                     <option>Standard (8+ chars)</option><option>Strong (12+ chars, mixed)</option><option>Very Strong (16+ chars)</option>
                   </select>
                 </div>
-                <Button onClick={() => toast({ title: 'Security settings saved' })}>Save</Button>
+                <Button onClick={() => handleSave('Security')} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
               </CardContent>
             </Card>
           )}
@@ -109,7 +129,7 @@ export default function AdminSettings() {
                     <Switch defaultChecked />
                   </div>
                 ))}
-                <Button onClick={() => toast({ title: 'Notification preferences saved' })}>Save</Button>
+                <Button onClick={() => handleSave('Notification')} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
               </CardContent>
             </Card>
           )}

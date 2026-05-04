@@ -9,6 +9,7 @@ import {
   Image, FileText, Mic, MicOff, Plus, UserPlus, X, File, Play, Pause
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import CallOverlay from '@/components/CallOverlay';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +44,8 @@ export default function SecureMessaging() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [callType, setCallType] = useState<'voice' | 'video'>('voice');
 
   useEffect(() => {
     if (!user) return;
@@ -274,8 +277,8 @@ export default function SecureMessaging() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: 'Voice call started' })}><Phone className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: 'Video call started' })}><Video className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCallType('voice'); setCallOpen(true); }}><Phone className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCallType('video'); setCallOpen(true); }}><Video className="h-4 w-4" /></Button>
                 </div>
               </div>
 
