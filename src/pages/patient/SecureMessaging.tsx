@@ -9,6 +9,7 @@ import {
   Image, FileText, Mic, MicOff, Plus, UserPlus, X, File, Play, Pause
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import CallOverlay from '@/components/CallOverlay';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
