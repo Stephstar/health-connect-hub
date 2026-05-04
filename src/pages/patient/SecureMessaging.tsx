@@ -44,6 +44,8 @@ export default function SecureMessaging() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [callOpen, setCallOpen] = useState(false);
+  const [callType, setCallType] = useState<'voice' | 'video'>('voice');
 
   useEffect(() => {
     if (!user) return;
