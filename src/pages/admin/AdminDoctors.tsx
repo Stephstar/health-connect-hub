@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Search, UserCheck, UserX, Star, CheckCircle2 } from 'lucide-react';
+import { Search, UserCheck, UserX, Star, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Doctor {
@@ -16,12 +18,22 @@ interface Doctor {
 
 export default function AdminDoctors() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ doctor: Doctor; newStatus: string; label: string } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => { loadDoctors(); }, []);
+
+  const checkAdmin = async () => {
+    if (!user) return false;
+    const { data } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+    if (!data) { toast({ title: 'Access denied', description: 'Admin role required.', variant: 'destructive' }); return false; }
+    return true;
+  };
 
   const loadDoctors = async () => {
     setLoading(true);
@@ -36,13 +48,8 @@ export default function AdminDoctors() {
       const emailMap = new Map((profiles || []).map(p => [p.id, p.email]));
 
       setDoctors(data.map(d => ({
-        id: d.id,
-        name: d.full_name,
-        email: d.user_id ? emailMap.get(d.user_id) || '' : '',
-        specialty: d.specialty,
-        status: d.status,
-        rating: Number(d.rating),
-        reviews: d.reviews_count,
+        id: d.id, name: d.full_name, email: d.user_id ? emailMap.get(d.user_id) || '' : '',
+        specialty: d.specialty, status: d.status, rating: Number(d.rating), reviews: d.reviews_count,
         joined: d.created_at.split('T')[0],
       })));
     }
@@ -55,10 +62,20 @@ export default function AdminDoctors() {
     return m1 && m2;
   });
 
-  const updateStatus = async (id: string, status: 'verified' | 'pending' | 'suspended', msg: string) => {
-    await supabase.from('doctors').update({ status }).eq('id', id);
-    setDoctors(prev => prev.map(d => d.id === id ? { ...d, status } : d));
-    toast({ title: msg });
+  const executeAction = async () => {
+    if (!confirmAction) return;
+    if (!(await checkAdmin())) { setConfirmAction(null); return; }
+    setActionLoading(true);
+    const { doctor, newStatus, label } = confirmAction;
+    const { error } = await supabase.from('doctors').update({ status: newStatus as any }).eq('id', doctor.id);
+    if (error) {
+      toast({ title: 'Action failed', description: error.message, variant: 'destructive' });
+    } else {
+      setDoctors(prev => prev.map(d => d.id === doctor.id ? { ...d, status: newStatus } : d));
+      toast({ title: `${doctor.name} ${label}` });
+    }
+    setActionLoading(false);
+    setConfirmAction(null);
   };
 
   const statusBadge = (s: string) => {
@@ -85,12 +102,8 @@ export default function AdminDoctors() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Specialty</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Reviews</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Doctor</TableHead><TableHead>Specialty</TableHead><TableHead>Rating</TableHead>
+                <TableHead>Reviews</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -99,10 +112,7 @@ export default function AdminDoctors() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{d.name.split(' ').slice(1).map(n => n[0]).join('')}</div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{d.name}</p>
-                        <p className="text-xs text-muted-foreground">{d.email}</p>
-                      </div>
+                      <div><p className="text-sm font-medium text-foreground">{d.name}</p><p className="text-xs text-muted-foreground">{d.email}</p></div>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{d.specialty}</TableCell>
@@ -113,23 +123,38 @@ export default function AdminDoctors() {
                     <div className="flex justify-end gap-1">
                       {d.status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => updateStatus(d.id, 'verified', `${d.name} approved`)}><CheckCircle2 className="h-3 w-3 mr-1" />Approve</Button>
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(d.id, 'suspended', `${d.name} rejected`)}><UserX className="h-3 w-3 mr-1" />Reject</Button>
+                          <Button size="sm" onClick={() => setConfirmAction({ doctor: d, newStatus: 'verified', label: 'approved' })}><CheckCircle2 className="h-3 w-3 mr-1" />Approve</Button>
+                          <Button size="sm" variant="outline" onClick={() => setConfirmAction({ doctor: d, newStatus: 'suspended', label: 'rejected' })}><UserX className="h-3 w-3 mr-1" />Reject</Button>
                         </>
                       )}
-                      {d.status === 'verified' && <Button size="sm" variant="outline" onClick={() => updateStatus(d.id, 'suspended', `${d.name} suspended`)}><UserX className="h-3 w-3 mr-1" />Suspend</Button>}
-                      {d.status === 'suspended' && <Button size="sm" onClick={() => updateStatus(d.id, 'verified', `${d.name} reactivated`)}><UserCheck className="h-3 w-3 mr-1" />Activate</Button>}
+                      {d.status === 'verified' && <Button size="sm" variant="outline" onClick={() => setConfirmAction({ doctor: d, newStatus: 'suspended', label: 'suspended' })}><UserX className="h-3 w-3 mr-1" />Suspend</Button>}
+                      {d.status === 'suspended' && <Button size="sm" onClick={() => setConfirmAction({ doctor: d, newStatus: 'verified', label: 'reactivated' })}><UserCheck className="h-3 w-3 mr-1" />Activate</Button>}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No doctors found.</TableCell></TableRow>
-              )}
+              {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No doctors found.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </Card>
       </div>
+
+      <Dialog open={!!confirmAction} onOpenChange={open => { if (!open) setConfirmAction(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-warning" />Confirm Action</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {confirmAction?.label === 'approved' ? 'approve' : confirmAction?.label === 'rejected' ? 'reject' : confirmAction?.label === 'suspended' ? 'suspend' : 'activate'} <strong>{confirmAction?.doctor.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)} disabled={actionLoading}>Cancel</Button>
+            <Button variant={confirmAction?.newStatus === 'suspended' ? 'destructive' : 'default'} onClick={executeAction} disabled={actionLoading}>
+              {actionLoading ? 'Processing…' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
