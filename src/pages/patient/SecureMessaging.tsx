@@ -277,8 +277,8 @@ export default function SecureMessaging() {
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: 'Voice call started' })}><Phone className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: 'Video call started' })}><Video className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCallType('voice'); setCallOpen(true); }}><Phone className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setCallType('video'); setCallOpen(true); }}><Video className="h-4 w-4" /></Button>
                 </div>
               </div>
 
