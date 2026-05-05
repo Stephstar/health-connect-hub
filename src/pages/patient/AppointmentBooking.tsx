@@ -23,6 +23,7 @@ export default function AppointmentBooking() {
   const [selectedTime, setSelectedTime] = useState('');
   const [step, setStep] = useState<'browse' | 'schedule' | 'confirm' | 'success'>('browse');
   const [submitting, setSubmitting] = useState(false);
+  const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
 
   const specialties = useMemo(() => {
     const set = new Set<string>(['All']);
