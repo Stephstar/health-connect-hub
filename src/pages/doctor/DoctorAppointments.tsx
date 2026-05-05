@@ -119,7 +119,7 @@ export default function DoctorAppointments() {
                   )}
                   {apt.status === 'upcoming' && (
                     <>
-                      <Button size="sm" onClick={() => navigate('/doctor/consultations')}>
+                      <Button size="sm" onClick={() => navigate(`/patient/consultation?apt=${apt.id}`)}>
                         {apt.type === 'video' ? <><Video className="h-3 w-3 mr-1" />Start</> : 'View'}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => updateStatus(apt.id, 'cancelled', 'Appointment cancelled')}><XCircle className="h-3 w-3" /></Button>
