@@ -55,6 +55,7 @@ export default function AppointmentBooking() {
     });
     setSubmitting(false);
     if (result) {
+      setBookedAppointmentId(result.id);
       toast({ title: 'Appointment booked', description: `Your appointment with ${selectedDoctor.name} is confirmed.` });
       setStep('success');
     } else {
