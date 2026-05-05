@@ -87,7 +87,7 @@ export default function DoctorDashboard() {
     })();
   }, [user]);
 
-  const updateStatus = async (id: string, status: string, msg: string) => {
+  const updateStatus = async (id: string, status: 'upcoming' | 'completed' | 'cancelled' | 'pending', msg: string) => {
     const confirmed = window.confirm(`Are you sure you want to ${status === 'upcoming' ? 'accept' : 'decline'} this appointment?`);
     if (!confirmed) return;
     await supabase.from('appointments').update({ status }).eq('id', id);
