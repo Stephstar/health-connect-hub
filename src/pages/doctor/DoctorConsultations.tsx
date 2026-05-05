@@ -108,7 +108,7 @@ export default function DoctorConsultations() {
                     {c.status}
                   </Badge>
                   {c.status === 'upcoming' && c.type === 'video' && (
-                    <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate('/doctor/video-call'); }}>
+                    <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/patient/consultation?apt=${c.id}`); }}>
                       <Video className="h-3 w-3 mr-1" />Start
                     </Button>
                   )}
