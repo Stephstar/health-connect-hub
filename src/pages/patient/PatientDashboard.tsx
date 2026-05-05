@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   Heart, Calendar, FileText, Brain, MessageSquare, CreditCard,
   Video, Bell, Clock, ChevronRight, Pill, Activity,
-  LogOut, User, Settings, Home, Menu, X
+  LogOut, User, Settings, Home, Menu, X, MapPin
 } from 'lucide-react';
-import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const sidebarItems = [
   { icon: Home, label: 'Dashboard', path: '/patient/dashboard' },
@@ -31,15 +31,51 @@ const quickActions = [
   { icon: Video, label: 'Start Consultation', path: '/patient/consultation', color: 'bg-primary/10 text-primary' },
 ];
 
+interface Medication {
+  name: string;
+  dosage: string;
+  frequency: string;
+  status: 'active' | 'completed';
+}
+
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
   const { appointments, notifications } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [medications, setMedications] = useState<Medication[]>([]);
 
   const upcomingAppointments = appointments.filter(a => a.status === 'upcoming');
   const unreadNotifications = notifications.filter(n => !n.read);
+
+  // Load real medications from prescriptions
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('prescriptions')
+      .select('items, status')
+      .eq('patient_id', user.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        if (!data) return;
+        const meds: Medication[] = [];
+        data.forEach(rx => {
+          const items = (rx.items as unknown as { medication: string; dosage: string; frequency: string }[]) || [];
+          items.forEach(item => {
+            meds.push({
+              name: `${item.medication} ${item.dosage}`.trim(),
+              dosage: item.dosage,
+              frequency: item.frequency,
+              status: rx.status === 'active' ? 'active' : 'completed',
+            });
+          });
+        });
+        setMedications(meds.slice(0, 4));
+      });
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -197,8 +233,14 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => navigate(apt.type === 'video' ? '/patient/consultation' : '/patient/appointments')}>
-                        {apt.type === 'video' ? 'Join Call' : 'Details'}
+                      <Button size="sm" onClick={() => {
+                        if (apt.type === 'video') {
+                          navigate(`/patient/consultation?apt=${apt.id}`);
+                        } else {
+                          navigate('/patient/appointments');
+                        }
+                      }}>
+                        {apt.type === 'video' ? <><Video className="h-3 w-3 mr-1" />Join Call</> : 'Details'}
                       </Button>
                     </div>
                   </Card>
@@ -212,8 +254,11 @@ export default function PatientDashboard() {
             <div>
               <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Recent Notifications</h3>
               <Card className="shadow-card divide-y">
-                {notifications.slice(0, 3).map(n => (
-                  <div key={n.id} className={`p-4 flex items-start gap-3 ${!n.read ? 'bg-primary/5' : ''}`}>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No notifications yet</div>
+                ) : notifications.slice(0, 3).map(n => (
+                  <div key={n.id} className={`p-4 flex items-start gap-3 cursor-pointer hover:bg-muted/50 transition-colors ${!n.read ? 'bg-primary/5' : ''}`}
+                    onClick={() => navigate('/patient/notifications')}>
                     <Bell className={`h-4 w-4 mt-0.5 ${!n.read ? 'text-primary' : 'text-muted-foreground'}`} />
                     <div>
                       <p className="text-sm font-medium text-foreground">{n.title}</p>
@@ -225,26 +270,31 @@ export default function PatientDashboard() {
               </Card>
             </div>
             <div>
-              <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Medication Reminders</h3>
+              <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Current Medications</h3>
               <Card className="shadow-card divide-y">
-                {[
-                  { name: 'Lisinopril 10mg', time: '8:00 AM', status: 'taken' },
-                  { name: 'Metformin 500mg', time: '12:00 PM', status: 'upcoming' },
-                  { name: 'Aspirin 81mg', time: '8:00 PM', status: 'upcoming' },
-                ].map((med, i) => (
+                {medications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No active prescriptions</div>
+                ) : medications.map((med, i) => (
                   <div key={i} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Pill className="h-4 w-4 text-primary" />
                       <div>
                         <p className="text-sm font-medium text-foreground">{med.name}</p>
-                        <p className="text-xs text-muted-foreground">{med.time}</p>
+                        <p className="text-xs text-muted-foreground">{med.frequency}</p>
                       </div>
                     </div>
-                    <Badge variant={med.status === 'taken' ? 'default' : 'secondary'} className="text-xs">
-                      {med.status === 'taken' ? '✓ Taken' : 'Upcoming'}
+                    <Badge variant={med.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">
+                      {med.status}
                     </Badge>
                   </div>
                 ))}
+                {medications.length > 0 && (
+                  <div className="p-3">
+                    <Button variant="ghost" size="sm" className="w-full" onClick={() => navigate('/patient/records')}>
+                      View All Records <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                )}
               </Card>
             </div>
           </div>

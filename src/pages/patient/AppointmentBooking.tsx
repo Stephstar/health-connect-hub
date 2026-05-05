@@ -23,6 +23,7 @@ export default function AppointmentBooking() {
   const [selectedTime, setSelectedTime] = useState('');
   const [step, setStep] = useState<'browse' | 'schedule' | 'confirm' | 'success'>('browse');
   const [submitting, setSubmitting] = useState(false);
+  const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
 
   const specialties = useMemo(() => {
     const set = new Set<string>(['All']);
@@ -55,6 +56,7 @@ export default function AppointmentBooking() {
     });
     setSubmitting(false);
     if (result) {
+      setBookedAppointmentId(result.id);
       toast({ title: 'Appointment booked', description: `Your appointment with ${selectedDoctor.name} is confirmed.` });
       setStep('success');
     } else {
@@ -211,9 +213,16 @@ export default function AppointmentBooking() {
             </div>
             <h3 className="text-2xl font-bold font-heading text-foreground">Booking Confirmed!</h3>
             <p className="text-muted-foreground">Your appointment has been scheduled. You'll see it on your dashboard.</p>
-            <div className="flex gap-3 justify-center">
-              <Button onClick={() => navigate('/patient/dashboard')}>Go to Dashboard</Button>
-              <Button variant="outline" onClick={() => { setStep('browse'); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); }}>Book Another</Button>
+            <div className="flex flex-col gap-3 items-center">
+              {consultationType === 'video' && bookedAppointmentId && (
+                <Button onClick={() => navigate(`/patient/consultation?apt=${bookedAppointmentId}`)}>
+                  <Video className="h-4 w-4 mr-2" /> Join Consultation Now
+                </Button>
+              )}
+              <div className="flex gap-3">
+                <Button variant={consultationType === 'video' ? 'outline' : 'default'} onClick={() => navigate('/patient/dashboard')}>Go to Dashboard</Button>
+                <Button variant="outline" onClick={() => { setStep('browse'); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); setBookedAppointmentId(null); }}>Book Another</Button>
+              </div>
             </div>
           </div>
         )}
