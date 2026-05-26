@@ -184,8 +184,8 @@ export default function AppointmentBooking() {
                 ))}
               </div>
 
-              <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('confirm')}>
-                Review Booking
+              <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('triage')}>
+                Continue to symptom check
               </Button>
             </Card>
           </div>
