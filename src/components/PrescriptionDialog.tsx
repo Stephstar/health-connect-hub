@@ -42,13 +42,13 @@ export default function PrescriptionDialog({
     try {
       // 1. Save prescription
       if (validItems.length > 0) {
-        const { error: rxErr } = await supabase.from('prescriptions').insert({
+        const { error: rxErr } = await supabase.from('prescriptions').insert([{
           doctor_id: doctorId,
           patient_id: patientId,
           items: validItems,
           notes: `Diagnosis: ${diagnosis}${notes ? '\n' + notes : ''}`,
           status: 'active',
-        });
+        }]);
         if (rxErr) throw rxErr;
       }
       // 2. Add to EMR timeline as medical record
