@@ -62,7 +62,9 @@ export default function ConsultationPage() {
   const appointmentId = searchParams.get('apt');
   const [patientName, setPatientName] = useState('Patient');
   const [patientId, setPatientId] = useState<string | null>(null);
+  const [doctorId, setDoctorId] = useState<string | null>(null);
   const [doctorName, setDoctorName] = useState('Doctor');
+  const [rxOpen, setRxOpen] = useState(false);
   const isDoctor = user?.role === 'doctor';
 
   // Load appointment and patient data
