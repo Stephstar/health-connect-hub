@@ -191,9 +191,17 @@ export default function AppointmentBooking() {
           </div>
         )}
 
+        {step === 'triage' && selectedDoctor && (
+          <TriageStep
+            specialty={selectedDoctor.specialty}
+            onBack={() => setStep('schedule')}
+            onComplete={(r) => { setTriage(r); setStep('confirm'); }}
+          />
+        )}
+
         {step === 'confirm' && selectedDoctor && (
           <div className="max-w-lg mx-auto space-y-6">
-            <Button variant="ghost" onClick={() => setStep('schedule')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+            <Button variant="ghost" onClick={() => setStep('triage')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
 
             <Card className="p-6 shadow-card">
               <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Booking Summary</h3>
