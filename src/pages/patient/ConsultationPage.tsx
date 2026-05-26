@@ -80,6 +80,7 @@ export default function ConsultationPage() {
 
       setConsultNotes(apt.notes || '');
       setPatientId(apt.patient_id);
+      setDoctorId(apt.doctor_id);
       const dName = (apt.doctors as { full_name: string } | null)?.full_name || 'Doctor';
       setDoctorName(dName);
 
