@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
+import TriageStep, { type TriageResult } from '@/components/TriageStep';
 
 const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
 
@@ -21,9 +22,10 @@ export default function AppointmentBooking() {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [step, setStep] = useState<'browse' | 'schedule' | 'confirm' | 'success'>('browse');
+  const [step, setStep] = useState<'browse' | 'schedule' | 'triage' | 'confirm' | 'success'>('browse');
   const [submitting, setSubmitting] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
+  const [triage, setTriage] = useState<TriageResult | null>(null);
 
   const specialties = useMemo(() => {
     const set = new Set<string>(['All']);
@@ -47,12 +49,16 @@ export default function AppointmentBooking() {
   const handleBook = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
     setSubmitting(true);
+    const reasonText = triage
+      ? `Chief complaint: ${triage.symptoms}\nDuration: ${triage.duration}\nSeverity: ${triage.severity}/10\nUrgency: ${triage.urgency}\nAllergies: ${triage.intake.allergies || 'none reported'}\nCurrent meds: ${triage.intake.currentMeds || 'none reported'}\nRelevant history: ${triage.intake.relevantHistory || 'none reported'}`
+      : undefined;
     const result = await bookAppointment({
       doctorId: selectedDoctor.id,
       date: selectedDate,
       time: selectedTime,
       type: consultationType,
       price: selectedDoctor.price,
+      reason: reasonText,
     });
     setSubmitting(false);
     if (result) {
@@ -60,7 +66,7 @@ export default function AppointmentBooking() {
       toast({ title: 'Appointment booked', description: `Your appointment with ${selectedDoctor.name} is confirmed.` });
       setStep('success');
     } else {
-      toast({ title: 'Booking failed', description: 'Please try again.', variant: 'destructive' });
+      toast({ title: 'Booking failed', description: 'That slot may already be booked. Please pick another time.', variant: 'destructive' });
     }
   };
 
@@ -178,16 +184,24 @@ export default function AppointmentBooking() {
                 ))}
               </div>
 
-              <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('confirm')}>
-                Review Booking
+              <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('triage')}>
+                Continue to symptom check
               </Button>
             </Card>
           </div>
         )}
 
+        {step === 'triage' && selectedDoctor && (
+          <TriageStep
+            specialty={selectedDoctor.specialty}
+            onBack={() => setStep('schedule')}
+            onComplete={(r) => { setTriage(r); setStep('confirm'); }}
+          />
+        )}
+
         {step === 'confirm' && selectedDoctor && (
           <div className="max-w-lg mx-auto space-y-6">
-            <Button variant="ghost" onClick={() => setStep('schedule')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
+            <Button variant="ghost" onClick={() => setStep('triage')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
 
             <Card className="p-6 shadow-card">
               <h3 className="text-lg font-semibold font-heading text-foreground mb-4">Booking Summary</h3>
@@ -198,6 +212,15 @@ export default function AppointmentBooking() {
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Time</span><span className="text-sm text-foreground">{selectedTime}</span></div>
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Type</span><span className="text-sm text-foreground capitalize">{consultationType === 'video' ? 'Video Call' : 'In-Person'}</span></div>
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Price</span><span className="text-lg font-bold text-foreground">${selectedDoctor.price}</span></div>
+                {triage && (
+                  <div className="py-2 space-y-1">
+                    <div className="flex justify-between"><span className="text-muted-foreground text-sm">Triage urgency</span><Badge className={
+                      triage.urgency === 'high' ? 'bg-destructive text-destructive-foreground border-0'
+                      : triage.urgency === 'moderate' ? 'bg-warning text-warning-foreground border-0'
+                      : 'bg-success text-success-foreground border-0'}>{triage.urgency}</Badge></div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{triage.symptoms}</p>
+                  </div>
+                )}
               </div>
               <Button className="w-full mt-6" onClick={handleBook} disabled={submitting}>
                 {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Booking...</> : 'Confirm Booking'}

@@ -13,6 +13,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import PrescriptionDialog from '@/components/PrescriptionDialog';
 
 interface PatientRecord {
   id: string;
@@ -61,7 +62,9 @@ export default function ConsultationPage() {
   const appointmentId = searchParams.get('apt');
   const [patientName, setPatientName] = useState('Patient');
   const [patientId, setPatientId] = useState<string | null>(null);
+  const [doctorId, setDoctorId] = useState<string | null>(null);
   const [doctorName, setDoctorName] = useState('Doctor');
+  const [rxOpen, setRxOpen] = useState(false);
   const isDoctor = user?.role === 'doctor';
 
   // Load appointment and patient data
@@ -77,6 +80,7 @@ export default function ConsultationPage() {
 
       setConsultNotes(apt.notes || '');
       setPatientId(apt.patient_id);
+      setDoctorId(apt.doctor_id);
       const dName = (apt.doctors as { full_name: string } | null)?.full_name || 'Doctor';
       setDoctorName(dName);
 
@@ -158,16 +162,18 @@ export default function ConsultationPage() {
       if (isDoctor) {
         navigate(`/doctor/consultations`);
       } else {
-        navigate('/patient/dashboard');
+        navigate('/patient/billing');
       }
     }, 1500);
   };
 
-  const completeAndPrescribe = async () => {
-    if (!appointmentId) return;
-    await supabase.from('appointments').update({ status: 'completed', notes: consultNotes }).eq('id', appointmentId);
-    toast({ title: 'Consultation completed', description: 'Redirecting to prescriptions...' });
-    navigate('/doctor/prescriptions');
+  const completeAndPrescribe = () => {
+    setRxOpen(true);
+  };
+
+  const onRxSaved = () => {
+    setCallState('ended');
+    setTimeout(() => navigate('/doctor/prescriptions'), 800);
   };
 
   const otherPersonName = isDoctor ? patientName : doctorName;
@@ -385,6 +391,15 @@ export default function ConsultationPage() {
           </div>
         )}
       </div>
+      <PrescriptionDialog
+        open={rxOpen}
+        onOpenChange={setRxOpen}
+        doctorId={doctorId}
+        patientId={patientId}
+        appointmentId={appointmentId}
+        consultNotes={consultNotes}
+        onSaved={onRxSaved}
+      />
     </div>
   );
 }
