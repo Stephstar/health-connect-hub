@@ -313,6 +313,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
   }, []);
 
+  const checkSlotAvailability: AppContextType['checkSlotAvailability'] = useCallback(async (doctorId, date, time, excludeId) => {
+    let q = supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('doctor_id', doctorId)
+      .eq('appointment_date', date)
+      .eq('appointment_time', time)
+      .in('status', ['upcoming', 'pending']);
+    if (excludeId) q = q.neq('id', excludeId);
+    const { count, error } = await q;
+    if (error) { console.error('availability error', error); return false; }
+    return (count ?? 0) === 0;
+  }, []);
+
+  const rescheduleAppointment: AppContextType['rescheduleAppointment'] = useCallback(async (id, date, time) => {
+    const apt = appointments.find(a => a.id === id);
+    if (!apt?.doctorId) return { ok: false, error: 'Appointment not found' };
+    const free = await checkSlotAvailability(apt.doctorId, date, time, id);
+    if (!free) return { ok: false, error: 'That slot is already booked. Please pick another time.' };
+    const { error } = await supabase
+      .from('appointments')
+      .update({ appointment_date: date, appointment_time: time, status: 'upcoming' })
+      .eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, date, time, status: 'upcoming' } : a));
+    if (user) {
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: 'Appointment Rescheduled',
+        message: `Your appointment with ${apt.doctorName} is now on ${date} at ${time}.`,
+        type: 'appointment',
+      });
+      loadNotifications();
+    }
+    return { ok: true };
+  }, [appointments, checkSlotAvailability, user, loadNotifications]);
+
   const updateAppointmentStatus = useCallback(async (id: string, status: Appointment['status']) => {
     await supabase.from('appointments').update({ status }).eq('id', id);
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
