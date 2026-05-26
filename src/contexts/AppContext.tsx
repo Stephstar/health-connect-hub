@@ -399,7 +399,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       appointments, doctors, messages, notifications, chatMessages, loading,
-      bookAppointment, addAppointment, cancelAppointment, updateAppointmentStatus,
+      bookAppointment, addAppointment, cancelAppointment, rescheduleAppointment, checkSlotAvailability, updateAppointmentStatus,
       sendMessage, markMessageRead,
       addChatMessage, clearChatMessages,
       onboardingData, updateOnboarding, markNotificationRead, refresh,
