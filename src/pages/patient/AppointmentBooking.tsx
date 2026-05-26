@@ -212,6 +212,15 @@ export default function AppointmentBooking() {
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Time</span><span className="text-sm text-foreground">{selectedTime}</span></div>
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Type</span><span className="text-sm text-foreground capitalize">{consultationType === 'video' ? 'Video Call' : 'In-Person'}</span></div>
                 <div className="flex justify-between py-2"><span className="text-muted-foreground text-sm">Price</span><span className="text-lg font-bold text-foreground">${selectedDoctor.price}</span></div>
+                {triage && (
+                  <div className="py-2 space-y-1">
+                    <div className="flex justify-between"><span className="text-muted-foreground text-sm">Triage urgency</span><Badge className={
+                      triage.urgency === 'high' ? 'bg-destructive text-destructive-foreground border-0'
+                      : triage.urgency === 'moderate' ? 'bg-warning text-warning-foreground border-0'
+                      : 'bg-success text-success-foreground border-0'}>{triage.urgency}</Badge></div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{triage.symptoms}</p>
+                  </div>
+                )}
               </div>
               <Button className="w-full mt-6" onClick={handleBook} disabled={submitting}>
                 {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Booking...</> : 'Confirm Booking'}
