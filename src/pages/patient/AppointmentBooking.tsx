@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
+import TriageStep, { type TriageResult } from '@/components/TriageStep';
 
 const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
 
