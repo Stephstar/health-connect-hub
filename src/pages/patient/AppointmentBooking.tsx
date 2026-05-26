@@ -49,12 +49,16 @@ export default function AppointmentBooking() {
   const handleBook = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) return;
     setSubmitting(true);
+    const reasonText = triage
+      ? `Chief complaint: ${triage.symptoms}\nDuration: ${triage.duration}\nSeverity: ${triage.severity}/10\nUrgency: ${triage.urgency}\nAllergies: ${triage.intake.allergies || 'none reported'}\nCurrent meds: ${triage.intake.currentMeds || 'none reported'}\nRelevant history: ${triage.intake.relevantHistory || 'none reported'}`
+      : undefined;
     const result = await bookAppointment({
       doctorId: selectedDoctor.id,
       date: selectedDate,
       time: selectedTime,
       type: consultationType,
       price: selectedDoctor.price,
+      reason: reasonText,
     });
     setSubmitting(false);
     if (result) {
@@ -62,7 +66,7 @@ export default function AppointmentBooking() {
       toast({ title: 'Appointment booked', description: `Your appointment with ${selectedDoctor.name} is confirmed.` });
       setStep('success');
     } else {
-      toast({ title: 'Booking failed', description: 'Please try again.', variant: 'destructive' });
+      toast({ title: 'Booking failed', description: 'That slot may already be booked. Please pick another time.', variant: 'destructive' });
     }
   };
 
