@@ -77,6 +77,8 @@ interface AppContextType {
   bookAppointment: (input: { doctorId: string; date: string; time: string; type: 'video' | 'in-person'; price: number; reason?: string }) => Promise<Appointment | null>;
   addAppointment: (apt: Appointment) => Promise<void>;
   cancelAppointment: (id: string) => Promise<void>;
+  rescheduleAppointment: (id: string, date: string, time: string) => Promise<{ ok: boolean; error?: string }>;
+  checkSlotAvailability: (doctorId: string, date: string, time: string, excludeId?: string) => Promise<boolean>;
   updateAppointmentStatus: (id: string, status: Appointment['status']) => Promise<void>;
   sendMessage: (recipientId: string, content: string) => Promise<void>;
   markMessageRead: (id: string) => Promise<void>;
