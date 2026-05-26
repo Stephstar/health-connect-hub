@@ -314,6 +314,7 @@ export default function PatientDashboard() {
           </div>
         </div>
       </main>
+      <RescheduleDialog appointment={rescheduleTarget} open={!!rescheduleTarget} onOpenChange={(v) => !v && setRescheduleTarget(null)} />
     </div>
   );
 }
