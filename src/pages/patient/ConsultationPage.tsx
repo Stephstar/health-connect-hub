@@ -167,11 +167,13 @@ export default function ConsultationPage() {
     }, 1500);
   };
 
-  const completeAndPrescribe = async () => {
-    if (!appointmentId) return;
-    await supabase.from('appointments').update({ status: 'completed', notes: consultNotes }).eq('id', appointmentId);
-    toast({ title: 'Consultation completed', description: 'Redirecting to prescriptions...' });
-    navigate('/doctor/prescriptions');
+  const completeAndPrescribe = () => {
+    setRxOpen(true);
+  };
+
+  const onRxSaved = () => {
+    setCallState('ended');
+    setTimeout(() => navigate('/doctor/prescriptions'), 800);
   };
 
   const otherPersonName = isDoctor ? patientName : doctorName;
