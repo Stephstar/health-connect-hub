@@ -239,15 +239,23 @@ export default function PatientDashboard() {
                           </div>
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => {
-                        if (apt.type === 'video') {
-                          navigate(`/patient/consultation?apt=${apt.id}`);
-                        } else {
-                          navigate('/patient/appointments');
-                        }
-                      }}>
-                        {apt.type === 'video' ? <><Video className="h-3 w-3 mr-1" />Join Call</> : 'Details'}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setRescheduleTarget(apt)}>Reschedule</Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => {
+                          if (!confirm(`Cancel appointment with ${apt.doctorName} on ${apt.date} at ${apt.time}?`)) return;
+                          await cancelAppointment(apt.id);
+                          toast({ title: 'Appointment cancelled' });
+                        }}>Cancel</Button>
+                        <Button size="sm" onClick={() => {
+                          if (apt.type === 'video') {
+                            navigate(`/patient/consultation?apt=${apt.id}`);
+                          } else {
+                            navigate('/patient/appointments');
+                          }
+                        }}>
+                          {apt.type === 'video' ? <><Video className="h-3 w-3 mr-1" />Join Call</> : 'Details'}
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))
