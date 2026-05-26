@@ -391,6 +391,15 @@ export default function ConsultationPage() {
           </div>
         )}
       </div>
+      <PrescriptionDialog
+        open={rxOpen}
+        onOpenChange={setRxOpen}
+        doctorId={doctorId}
+        patientId={patientId}
+        appointmentId={appointmentId}
+        consultNotes={consultNotes}
+        onSaved={onRxSaved}
+      />
     </div>
   );
 }
