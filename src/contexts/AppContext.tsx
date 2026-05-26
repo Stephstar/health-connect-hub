@@ -252,6 +252,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const bookAppointment: AppContextType['bookAppointment'] = useCallback(async (input) => {
     if (!user) return null;
+    // Availability check to prevent double booking
+    const { count: dupCount } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('doctor_id', input.doctorId)
+      .eq('appointment_date', input.date)
+      .eq('appointment_time', input.time)
+      .in('status', ['upcoming', 'pending']);
+    if ((dupCount ?? 0) > 0) {
+      console.warn('Slot already booked');
+      return null;
+    }
     const { data, error } = await supabase
       .from('appointments')
       .insert({
