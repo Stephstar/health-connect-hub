@@ -45,7 +45,7 @@ export default function PrescriptionDialog({
         const { error: rxErr } = await supabase.from('prescriptions').insert([{
           doctor_id: doctorId,
           patient_id: patientId,
-          items: validItems,
+          items: validItems as unknown as Record<string, unknown>[],
           notes: `Diagnosis: ${diagnosis}${notes ? '\n' + notes : ''}`,
           status: 'active',
         }]);
