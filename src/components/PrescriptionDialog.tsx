@@ -42,24 +42,26 @@ export default function PrescriptionDialog({
     try {
       // 1. Save prescription
       if (validItems.length > 0) {
-        const { error: rxErr } = await supabase.from('prescriptions').insert([{
+        const rxRow = {
           doctor_id: doctorId,
           patient_id: patientId,
-          items: validItems as unknown as Record<string, unknown>[],
+          items: JSON.parse(JSON.stringify(validItems)),
           notes: `Diagnosis: ${diagnosis}${notes ? '\n' + notes : ''}`,
-          status: 'active',
-        }]);
+          status: 'active' as const,
+        };
+        const { error: rxErr } = await supabase.from('prescriptions').insert([rxRow]);
         if (rxErr) throw rxErr;
       }
       // 2. Add to EMR timeline as medical record
-      const { error: mrErr } = await supabase.from('medical_records').insert({
+      const mrRow = {
         patient_id: patientId,
         doctor_id: doctorId,
         record_type: 'consultation',
         title: `Consultation — ${diagnosis}`,
         description: consultNotes || notes,
-        data: { diagnosis, prescription: validItems, notes },
-      });
+        data: JSON.parse(JSON.stringify({ diagnosis, prescription: validItems, notes })),
+      };
+      const { error: mrErr } = await supabase.from('medical_records').insert([mrRow]);
       if (mrErr) throw mrErr;
       // 3. Mark appointment completed
       if (appointmentId) {
