@@ -162,7 +162,7 @@ export default function ConsultationPage() {
       if (isDoctor) {
         navigate(`/doctor/consultations`);
       } else {
-        navigate('/patient/dashboard');
+        navigate('/patient/billing');
       }
     }, 1500);
   };
