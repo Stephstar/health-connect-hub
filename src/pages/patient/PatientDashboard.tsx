@@ -38,13 +38,19 @@ interface Medication {
   status: 'active' | 'completed';
 }
 
+import RescheduleDialog from '@/components/RescheduleDialog';
+import { useToast } from '@/hooks/use-toast';
+import type { Appointment } from '@/contexts/AppContext';
+
 export default function PatientDashboard() {
   const { user, logout } = useAuth();
-  const { appointments, notifications } = useApp();
+  const { appointments, notifications, cancelAppointment } = useApp();
+  const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [medications, setMedications] = useState<Medication[]>([]);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
 
   const upcomingAppointments = appointments.filter(a => a.status === 'upcoming');
   const unreadNotifications = notifications.filter(n => !n.read);
