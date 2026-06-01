@@ -25,6 +25,17 @@ export default function AppointmentBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
   const [triage, setTriage] = useState<TriageResult | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!selectedDoctor || !selectedDate) { setAvailableSlots([]); return; }
+    setLoadingSlots(true);
+    setSelectedTime('');
+    getAvailableSlots(selectedDoctor.id, selectedDate)
+      .then(setAvailableSlots)
+      .finally(() => setLoadingSlots(false));
+  }, [selectedDoctor, selectedDate]);
 
   const specialties = useMemo(() => {
     const set = new Set<string>(['All']);
