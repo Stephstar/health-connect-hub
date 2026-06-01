@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useApp, type Appointment } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
-
-const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
+import { getAvailableSlots } from '@/lib/slots';
 
 export default function RescheduleDialog({ appointment, open, onOpenChange, onDone }: {
   appointment: Appointment | null;
