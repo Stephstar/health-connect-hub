@@ -75,14 +75,22 @@ export default function RescheduleDialog({ appointment, open, onOpenChange, onDo
             </div>
             <div>
               <p className="text-sm font-medium mb-2">New time</p>
-              <div className="grid grid-cols-4 gap-2">
-                {TIME_SLOTS.map(t => (
-                  <button key={t} onClick={() => setTime(t)}
-                    className={`px-2 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${time === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {!date ? (
+                <p className="text-xs text-muted-foreground">Pick a date first.</p>
+              ) : loadingSlots ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading slots…</p>
+              ) : slots.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No open slots on this day.</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {slots.map(t => (
+                    <button key={t} onClick={() => setTime(t)}
+                      className={`px-2 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${time === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
