@@ -182,17 +182,25 @@ export default function AppointmentBooking() {
               </div>
 
               <h4 className="font-semibold text-foreground mb-3">Select Time</h4>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
-                {TIME_SLOTS.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setSelectedTime(t)}
-                    className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {!selectedDate ? (
+                <p className="text-sm text-muted-foreground mb-6">Pick a date to see open slots.</p>
+              ) : loadingSlots ? (
+                <p className="text-sm text-muted-foreground mb-6 flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading available slots…</p>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-sm text-muted-foreground mb-6">No open slots on this date. Please pick another day.</p>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
+                  {availableSlots.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setSelectedTime(t)}
+                      className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('triage')}>
                 Continue to symptom check
