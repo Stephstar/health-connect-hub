@@ -102,6 +102,8 @@ export default function DoctorSettings() {
             </Card>
           )}
 
+          {activeTab === 'availability' && <AvailabilityEditor />}
+
           {activeTab === 'notifications' && (
             <Card className="shadow-card">
               <CardHeader><CardTitle className="text-lg">Notifications</CardTitle></CardHeader>
