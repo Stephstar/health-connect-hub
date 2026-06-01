@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
 import { User, Bell, Shield, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import AvailabilityEditor from '@/components/AvailabilityEditor';
 
 export default function DoctorSettings() {
   const { user } = useAuth();
