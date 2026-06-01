@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, type Doctor } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,7 @@ import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, L
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
 import TriageStep, { type TriageResult } from '@/components/TriageStep';
-
-const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
+import { getAvailableSlots } from '@/lib/slots';
 
 export default function AppointmentBooking() {
   const navigate = useNavigate();
@@ -26,6 +25,17 @@ export default function AppointmentBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
   const [triage, setTriage] = useState<TriageResult | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!selectedDoctor || !selectedDate) { setAvailableSlots([]); return; }
+    setLoadingSlots(true);
+    setSelectedTime('');
+    getAvailableSlots(selectedDoctor.id, selectedDate)
+      .then(setAvailableSlots)
+      .finally(() => setLoadingSlots(false));
+  }, [selectedDoctor, selectedDate]);
 
   const specialties = useMemo(() => {
     const set = new Set<string>(['All']);
@@ -172,17 +182,25 @@ export default function AppointmentBooking() {
               </div>
 
               <h4 className="font-semibold text-foreground mb-3">Select Time</h4>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
-                {TIME_SLOTS.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setSelectedTime(t)}
-                    className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {!selectedDate ? (
+                <p className="text-sm text-muted-foreground mb-6">Pick a date to see open slots.</p>
+              ) : loadingSlots ? (
+                <p className="text-sm text-muted-foreground mb-6 flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading available slots…</p>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-sm text-muted-foreground mb-6">No open slots on this date. Please pick another day.</p>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-6">
+                  {availableSlots.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setSelectedTime(t)}
+                      className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${selectedTime === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <Button className="w-full" disabled={!selectedDate || !selectedTime} onClick={() => setStep('triage')}>
                 Continue to symptom check

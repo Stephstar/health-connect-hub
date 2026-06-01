@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useApp, type Appointment } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
-
-const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
+import { getAvailableSlots } from '@/lib/slots';
 
 export default function RescheduleDialog({ appointment, open, onOpenChange, onDone }: {
   appointment: Appointment | null;
@@ -18,6 +17,16 @@ export default function RescheduleDialog({ appointment, open, onOpenChange, onDo
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!appointment?.doctorId || !date) { setSlots([]); return; }
+    setLoadingSlots(true); setTime('');
+    getAvailableSlots(appointment.doctorId, date, appointment.id)
+      .then(setSlots)
+      .finally(() => setLoadingSlots(false));
+  }, [appointment, date]);
 
   const dates = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
@@ -66,14 +75,22 @@ export default function RescheduleDialog({ appointment, open, onOpenChange, onDo
             </div>
             <div>
               <p className="text-sm font-medium mb-2">New time</p>
-              <div className="grid grid-cols-4 gap-2">
-                {TIME_SLOTS.map(t => (
-                  <button key={t} onClick={() => setTime(t)}
-                    className={`px-2 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${time === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {!date ? (
+                <p className="text-xs text-muted-foreground">Pick a date first.</p>
+              ) : loadingSlots ? (
+                <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading slots…</p>
+              ) : slots.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No open slots on this day.</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {slots.map(t => (
+                    <button key={t} onClick={() => setTime(t)}
+                      className={`px-2 py-1.5 rounded-lg border-2 text-xs font-medium transition-all ${time === t ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground hover:border-primary/30'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

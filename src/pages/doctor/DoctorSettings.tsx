@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import DashboardLayout from '@/components/DashboardLayout';
 import { User, Bell, Shield, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import AvailabilityEditor from '@/components/AvailabilityEditor';
 
 export default function DoctorSettings() {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ export default function DoctorSettings() {
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'availability', label: 'Availability', icon: Clock },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
   ];
@@ -99,6 +101,8 @@ export default function DoctorSettings() {
               </CardContent>
             </Card>
           )}
+
+          {activeTab === 'availability' && <AvailabilityEditor />}
 
           {activeTab === 'notifications' && (
             <Card className="shadow-card">
