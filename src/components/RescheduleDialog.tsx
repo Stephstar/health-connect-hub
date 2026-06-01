@@ -17,6 +17,16 @@ export default function RescheduleDialog({ appointment, open, onOpenChange, onDo
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!appointment?.doctorId || !date) { setSlots([]); return; }
+    setLoadingSlots(true); setTime('');
+    getAvailableSlots(appointment.doctorId, date, appointment.id)
+      .then(setSlots)
+      .finally(() => setLoadingSlots(false));
+  }, [appointment, date]);
 
   const dates = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
