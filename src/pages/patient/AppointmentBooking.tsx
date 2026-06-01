@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, type Doctor } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,7 @@ import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, L
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
 import TriageStep, { type TriageResult } from '@/components/TriageStep';
-
-const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM'];
+import { getAvailableSlots } from '@/lib/slots';
 
 export default function AppointmentBooking() {
   const navigate = useNavigate();
