@@ -219,8 +219,8 @@ export default function LandingPage() {
               <h4 className="font-semibold text-foreground mb-3 text-sm">Contact</h4>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Mail className="h-4 w-4" /> support@mediconnect.com</div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /> +1 (800) 555-0123</div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /> San Francisco, CA</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /> (+256) 760146235</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><MapPin className="h-4 w-4" /> Kampala (U), CA</div>
               </div>
             </div>
           </div>
