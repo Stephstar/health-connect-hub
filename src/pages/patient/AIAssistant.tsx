@@ -3,11 +3,17 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Send, AlertTriangle, CheckCircle2, Activity } from 'lucide-react';
+import { AlertCircle, Brain, Send, AlertTriangle, CheckCircle2, Activity, Info } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ReactMarkdown from 'react-markdown';
+
+interface Section {
+  title: string;
+  content: string;
+  icon: 'info' | 'warning' | 'success' | 'alert';
+}
 
 interface ChatMsg {
   id: string;
@@ -15,6 +21,52 @@ interface ChatMsg {
   content: string;
   timestamp: string;
   urgency?: 'low' | 'moderate' | 'high';
+  sections?: Section[];
+  shouldBookAppointment?: boolean;
+  keywords?: string[];
+}
+
+const urgencyConfig = {
+  low: { 
+    label: 'Low Urgency', 
+    className: 'bg-success/15 text-success border border-success/30',
+    bgClass: 'bg-success/5'
+  },
+  moderate: { 
+    label: '⚠️ Moderate', 
+    className: 'bg-warning/15 text-warning border border-warning/30',
+    bgClass: 'bg-warning/5'
+  },
+  high: { 
+    label: '🚨 High Urgency', 
+    className: 'bg-destructive/15 text-destructive border border-destructive/30',
+    bgClass: 'bg-destructive/5'
+  },
+};
+
+function MessageSections({ sections, urgency }: { sections?: Section[], urgency?: string }) {
+  if (!sections?.length) return null;
+  
+  const iconMap = {
+    info: <Info className="h-4 w-4" />,
+    warning: <AlertTriangle className="h-4 w-4" />,
+    success: <CheckCircle2 className="h-4 w-4" />,
+    alert: <AlertCircle className="h-4 w-4" />,
+  };
+
+  return (
+    <div className="space-y-3 mt-3">
+      {sections.map((section, idx) => (
+        <div key={idx} className={`p-3 rounded-lg border ${urgency === 'high' && section.icon === 'alert' ? 'border-destructive/40 bg-destructive/5' : 'border-primary/20 bg-primary/5'}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-primary">{iconMap[section.icon]}</span>
+            <span className="text-sm font-semibold text-foreground">{section.title}</span>
+          </div>
+          <p className="text-sm text-foreground/80 leading-relaxed">{section.content}</p>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function AIAssistant() {
@@ -23,7 +75,7 @@ export default function AIAssistant() {
     {
       id: '0',
       role: 'assistant',
-      content: "Hello! I'm your **AI Health Assistant**. I can help you:\n\n- 🩺 Assess your symptoms\n- 💡 Share health tips & information\n- ⚠️ Recommend when to see a doctor\n\nPlease describe your symptoms or ask a health question.\n\n> *This is not medical advice. Always book an appointment for a proper evaluation.*",
+      content: "Hello! I'm your **AI Health Assistant**. I can help you:\n\n- 🩺 Assess your symptoms\n- 💡 Share health tips & information\n- ⚠️ Recommend when to see a doctor\n\nPlease describe what you're experiencing, and I'll provide personalized guidance.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       urgency: 'low',
     },
@@ -61,6 +113,9 @@ export default function AIAssistant() {
         role: 'assistant',
         content: data.content,
         urgency: data.urgency,
+        sections: data.sections,
+        shouldBookAppointment: data.shouldBookAppointment,
+        keywords: data.keywords,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -70,18 +125,6 @@ export default function AIAssistant() {
     } finally {
       setIsTyping(false);
     }
-  };
-
-  const urgencyBadge = (urgency?: string) => {
-    if (!urgency) return null;
-    const config = {
-      low: { label: 'Low Urgency', className: 'bg-success/10 text-success' },
-      moderate: { label: 'Moderate', className: 'bg-warning/10 text-warning' },
-      high: { label: 'High Urgency', className: 'bg-destructive/10 text-destructive' },
-    } as const;
-    const c = config[urgency as keyof typeof config];
-    if (!c) return null;
-    return <Badge className={c.className}>{c.label}</Badge>;
   };
 
   const quickPrompts = [
@@ -116,23 +159,52 @@ export default function AIAssistant() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map(msg => (
               <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className="max-w-[80%]">
+                <div className="max-w-[85%]">
                   {msg.role === 'assistant' && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <Brain className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">AI Assistant</span>
-                      {urgencyBadge(msg.urgency)}
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <Brain className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-semibold text-primary">AI Health Assistant</span>
+                      </div>
+                      {msg.urgency && (
+                        <Badge className={urgencyConfig[msg.urgency].className}>
+                          {urgencyConfig[msg.urgency].label}
+                        </Badge>
+                      )}
                     </div>
                   )}
-                  <div className={`rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'}`}>
+                  
+                  <div className={`rounded-2xl px-4 py-3 ${
+                    msg.role === 'user' 
+                      ? 'bg-primary text-primary-foreground rounded-br-md' 
+                      : `bg-card border border-border rounded-bl-md ${msg.urgency ? urgencyConfig[msg.urgency].bgClass : ''}`
+                  }`}>
                     {msg.role === 'assistant' ? (
-                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>blockquote]:border-l-2 [&>blockquote]:border-primary/30 [&>blockquote]:pl-3 [&>blockquote]:italic [&>blockquote]:text-muted-foreground">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <div>
+                        <div className="text-sm prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>blockquote]:border-l-2 [&>blockquote]:border-primary/30 [&>blockquote]:pl-3">
+                          <ReactMarkdown>{msg.content.split('---')[0]}</ReactMarkdown>
+                        </div>
+                        
+                        {/* Render structured sections */}
+                        <MessageSections sections={msg.sections} urgency={msg.urgency} />
+                        
+                        {/* Book appointment CTA */}
+                        {msg.shouldBookAppointment && (
+                          <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                            <p className="text-sm font-medium text-primary mb-2">📋 Next Step</p>
+                            <button className="text-sm text-primary font-semibold hover:underline">
+                              Book an Appointment →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-sm whitespace-pre-line">{msg.content}</div>
                     )}
-                    <p className={`text-[10px] mt-1 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{msg.timestamp}</p>
+                    
+                    <p className={`text-[10px] mt-2 ${msg.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                      {msg.timestamp}
+                    </p>
                   </div>
                 </div>
               </div>
