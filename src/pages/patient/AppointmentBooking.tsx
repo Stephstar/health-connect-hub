@@ -121,11 +121,11 @@ export default function AppointmentBooking() {
                 {filtered.map(doc => (
                   <Card key={doc.id} className={`p-5 shadow-card hover:shadow-card-hover transition-all cursor-pointer ${selectedDoctor?.id === doc.id ? 'ring-2 ring-primary' : ''}`} onClick={() => setSelectedDoctor(doc)}>
                     <div className="flex items-start gap-4">
-                      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
                         {doc.name.split(' ').slice(1).map(n => n[0]).join('')}
                       </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground text-sm">{doc.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground text-sm truncate">{doc.name}</p>
                         <p className="text-xs text-muted-foreground">{doc.specialty}</p>
                         <div className="flex items-center gap-1 mt-1">
                           <Star className="h-3 w-3 fill-warning text-warning" />
@@ -134,9 +134,19 @@ export default function AppointmentBooking() {
                         </div>
                       </div>
                     </div>
+                    {doc.bio && (
+                      <p className="text-xs text-muted-foreground mt-3 line-clamp-2 leading-relaxed">{doc.bio}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-3 flex-wrap text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Award className="h-3 w-3" /> {doc.yearsExperience}y exp</span>
+                      {doc.languages?.length > 0 && (
+                        <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {doc.languages.slice(0, 2).join(', ')}</span>
+                      )}
+                      <span className="flex items-center gap-1"><GraduationCap className="h-3 w-3" /> Verified</span>
+                    </div>
                     <div className="flex items-center justify-between mt-4 pt-3 border-t">
                       <span className="text-lg font-bold text-foreground">${doc.price}</span>
-                      <Badge variant="default">{doc.yearsExperience}y exp</Badge>
+                      <Badge variant="default" className="text-[10px]"><Video className="h-3 w-3 mr-1" /> Available</Badge>
                     </div>
                   </Card>
                 ))}
