@@ -158,11 +158,37 @@ export default function AppointmentBooking() {
             <Button variant="ghost" onClick={() => setStep('browse')}><ChevronLeft className="h-4 w-4 mr-1" /> Back</Button>
 
             <Card className="p-6 shadow-card">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">{selectedDoctor.name.split(' ').slice(1).map(n => n[0]).join('')}</div>
-                <div>
-                  <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedDoctor.specialty} • ${selectedDoctor.price}</p>
+              <div className="flex items-start gap-4 mb-5 pb-5 border-b">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl shrink-0">
+                  {selectedDoctor.name.split(' ').slice(1).map(n => n[0]).join('')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-semibold text-foreground">{selectedDoctor.name}</p>
+                    <span className="text-lg font-bold text-foreground">${selectedDoctor.price}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{selectedDoctor.specialty}</p>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap text-xs">
+                    <span className="flex items-center gap-1 text-foreground">
+                      <Star className="h-3 w-3 fill-warning text-warning" />
+                      <span className="font-medium">{selectedDoctor.rating}</span>
+                      <span className="text-muted-foreground">({selectedDoctor.reviews} reviews)</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Award className="h-3 w-3" /> {selectedDoctor.yearsExperience}y experience
+                    </span>
+                    {selectedDoctor.languages?.length > 0 && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Globe className="h-3 w-3" /> {selectedDoctor.languages.join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  {selectedDoctor.bio && (
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{selectedDoctor.bio}</p>
+                  )}
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-2">
+                    <GraduationCap className="h-3 w-3" /> Verified credentials
+                  </div>
                 </div>
               </div>
 
