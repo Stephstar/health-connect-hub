@@ -5,15 +5,15 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Mic, MicOff, VideoIcon, VideoOff, Monitor, Phone, MessageSquare,
-  Paperclip, Send, X, Maximize2, Minimize2, FileText, Pill,
-  Activity, Brain, ChevronRight, Clock, AlertTriangle, User
+  Send, X, Maximize2, Minimize2, FileText, Pill,
+  Activity, Brain, MessageSquare
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PrescriptionDialog from '@/components/PrescriptionDialog';
+import JitsiRoom from '@/components/JitsiRoom';
 
 interface PatientRecord {
   id: string;
