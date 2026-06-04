@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Loader2 } from 'lucide-react';
+import { Search, Video, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Loader2, Globe, Award, GraduationCap } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useToast } from '@/hooks/use-toast';
 import TriageStep, { type TriageResult } from '@/components/TriageStep';
