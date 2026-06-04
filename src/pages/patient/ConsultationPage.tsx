@@ -210,13 +210,10 @@ export default function ConsultationPage() {
             {appointmentId && user && (
               <JitsiRoom
                 appointmentId={appointmentId}
-                displayName={user.full_name || user.email || (isDoctor ? 'Doctor' : 'Patient')}
+                displayName={user.name || user.email || (isDoctor ? 'Doctor' : 'Patient')}
                 email={user.email}
                 onJoin={async () => {
                   setCallState('connected');
-                  if (appointmentId && isDoctor) {
-                    await supabase.from('appointments').update({ status: 'in_progress' }).eq('id', appointmentId);
-                  }
                 }}
                 onLeave={async (duration) => {
                   setCallDuration(duration);
