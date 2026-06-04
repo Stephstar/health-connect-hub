@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Send, X, Maximize2, Minimize2, FileText, Pill,
-  Activity, Brain, MessageSquare
+  Activity, Brain, MessageSquare, AlertTriangle
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
