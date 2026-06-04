@@ -5,15 +5,15 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Mic, MicOff, VideoIcon, VideoOff, Monitor, Phone, MessageSquare,
-  Paperclip, Send, X, Maximize2, Minimize2, FileText, Pill,
-  Activity, Brain, ChevronRight, Clock, AlertTriangle, User
+  Send, X, Maximize2, Minimize2, FileText, Pill,
+  Activity, Brain, MessageSquare, AlertTriangle
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PrescriptionDialog from '@/components/PrescriptionDialog';
+import JitsiRoom from '@/components/JitsiRoom';
 
 interface PatientRecord {
   id: string;
@@ -37,9 +37,6 @@ export default function ConsultationPage() {
   const { user } = useAuth();
 
   // Call state
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -207,64 +204,41 @@ export default function ConsultationPage() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Video Area */}
-        <div className="flex-1 flex flex-col relative bg-muted/20">
-          {/* Main video */}
-          <div className="flex-1 flex items-center justify-center relative">
-            <div className="text-center">
-              <div className={`h-28 w-28 rounded-full flex items-center justify-center mx-auto mb-4 ${callState === 'connecting' ? 'bg-primary/20 animate-pulse' : 'bg-primary/10'}`}>
-                <span className="text-4xl font-bold text-primary">{otherInitials}</span>
-              </div>
-              <p className="text-foreground text-lg font-medium">{otherPersonName}</p>
-              {callState === 'connecting' && <p className="text-sm text-muted-foreground mt-1">Connecting…</p>}
-            </div>
-
-            {/* PiP self-view */}
-            <div className="absolute bottom-4 right-4 w-36 h-28 rounded-xl bg-card border flex items-center justify-center overflow-hidden shadow-md">
-              {isCameraOn ? (
-                <div className="text-center">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">You</p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <VideoOff className="h-5 w-5 text-muted-foreground mx-auto" />
-                  <p className="text-[10px] text-muted-foreground mt-1">Camera off</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="h-16 flex items-center justify-center gap-3 bg-card border-t shrink-0">
-            <Button variant="ghost" size="icon"
-              className={`h-11 w-11 rounded-full ${isMuted ? 'bg-destructive text-destructive-foreground' : 'bg-muted'}`}
-              onClick={() => setIsMuted(!isMuted)}>
-              {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon"
-              className={`h-11 w-11 rounded-full ${!isCameraOn ? 'bg-destructive text-destructive-foreground' : 'bg-muted'}`}
-              onClick={() => setIsCameraOn(!isCameraOn)}>
-              {isCameraOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon"
-              className={`h-11 w-11 rounded-full ${isScreenSharing ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-              onClick={() => { setIsScreenSharing(!isScreenSharing); toast({ title: isScreenSharing ? 'Screen sharing stopped' : 'Screen sharing started' }); }}>
-              <Monitor className="h-4 w-4" />
-            </Button>
-            <Button size="icon"
-              className="h-12 w-12 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={endCall}>
-              <Phone className="h-5 w-5 rotate-[135deg]" />
-            </Button>
-            {isDoctor && callState === 'connected' && (
-              <Button size="sm" variant="outline" className="ml-4 text-xs" onClick={completeAndPrescribe}>
-                <Pill className="h-3 w-3 mr-1" /> Complete & Prescribe
-              </Button>
+        {/* Video Area (Jitsi) */}
+        <div className="flex-1 flex flex-col relative bg-black">
+          <div className="flex-1 relative">
+            {appointmentId && user && (
+              <JitsiRoom
+                appointmentId={appointmentId}
+                displayName={user.name || user.email || (isDoctor ? 'Doctor' : 'Patient')}
+                email={user.email}
+                onJoin={async () => {
+                  setCallState('connected');
+                }}
+                onLeave={async (duration) => {
+                  setCallDuration(duration);
+                  setCallState('ended');
+                  if (isDoctor) {
+                    // Prompt prescribe flow
+                    setRxOpen(true);
+                  } else {
+                    toast({ title: 'Consultation ended' });
+                    setTimeout(() => navigate('/patient/billing'), 1200);
+                  }
+                }}
+              />
             )}
           </div>
+          {isDoctor && callState === 'connected' && (
+            <div className="h-14 flex items-center justify-center gap-3 bg-card border-t shrink-0">
+              <Button size="sm" variant="outline" className="text-xs" onClick={completeAndPrescribe}>
+                <Pill className="h-3 w-3 mr-1" /> Complete & Prescribe
+              </Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={endCall}>
+                End consultation
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Chat Sidebar */}
