@@ -37,9 +37,6 @@ export default function ConsultationPage() {
   const { user } = useAuth();
 
   // Call state
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOn, setIsCameraOn] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
